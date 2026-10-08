@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ValidationError } from '@aegis/shared';
+import { ValidationError, type ToolCapability } from '@aegis/shared';
 import { jwtDecodeTool, ToolGateway, ToolRegistry, createDefaultToolRegistry, createStubTools } from '@aegis/tools';
 import type { ToolExecutionContext } from '@aegis/tools';
 
@@ -27,7 +27,7 @@ describe('tool registry metadata validation (spec §33)', () => {
   it('rejects unknown capabilities and duplicates', () => {
     const registry = new ToolRegistry();
     expect(() =>
-      registry.register({ ...jwtDecodeTool, capabilities: ['NETWORK', 'TELEPATHY'] }),
+      registry.register({ ...jwtDecodeTool, capabilities: ['NETWORK', 'TELEPATHY' as unknown as ToolCapability] }),
     ).toThrowError(ValidationError);
     registry.register(jwtDecodeTool);
     expect(() => registry.register(jwtDecodeTool)).toThrowError(ValidationError);
@@ -86,7 +86,11 @@ describe('tool gateway (spec §17: model output cannot execute directly)', () =>
     const result = await gateway.execute('parser.jwt', { token }, baseContext());
     expect(result.ok).toBe(true);
     if (result.ok) {
-      const output = result.output as { header: Record<string, unknown>; payload: Record<string, unknown> };
+      const output = result.output as {
+        header: Record<string, unknown>;
+        payload: Record<string, unknown>;
+        signature_present: boolean;
+      };
       expect(output.header.alg).toBe('HS256');
       expect(output.payload.sub).toBe('1234567890');
       expect(output.signature_present).toBe(true);

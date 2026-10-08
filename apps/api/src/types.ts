@@ -1,5 +1,4 @@
 /** Fastify type augmentation for request context and authenticated user. */
-import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContext } from './context.js';
 
 export interface RequestUser {

@@ -8,7 +8,6 @@ import {
   ModelError,
   NotFoundError,
   NotImplementedError,
-  PlatformError,
   QuotaError,
   ScopeViolationError,
   TimeoutError,

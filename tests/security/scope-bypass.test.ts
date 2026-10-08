@@ -162,11 +162,13 @@ describe('target content is treated as hostile data, not instructions (spec §1.
       },
     });
     expect(response.statusCode).toBe(201);
-    // The injection text is stored as opaque target data, nothing more.
+    // The injection payload in the query string is treated as ordinary URL
+    // data: nothing interprets it, and normalisation stores only the
+    // canonical scheme://host:port/path (the query is dropped entirely).
     const rows = await test.pool.query<{ value: string }>(
       'SELECT value FROM targets WHERE engagement_id = $1',
       [engagementId],
     );
-    expect(rows.rows[0]!.value).toContain('ignore+previous+instructions');
+    expect(rows.rows[0]!.value).toBe('http://lab.internal:8080/');
   });
 });

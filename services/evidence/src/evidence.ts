@@ -11,13 +11,26 @@
  */
 import { createHash } from 'node:crypto';
 import type { Logger } from '@aegis/logging';
-import {
-  EvidenceError,
-  NotFoundError,
-  generateId,
-} from '@aegis/shared';
-import type { EvidenceRepository, EvidenceRecord } from '@aegis/database';
+import { EvidenceError, NotFoundError, generateId } from '@aegis/shared';
+import type { EvidenceRecord } from '@aegis/database';
 import type { ObjectStore } from './object-store.js';
+
+/** The repository surface this service actually needs (structural type). */
+export interface EvidenceRepositorySurface {
+  insert(input: {
+    engagementId: string;
+    type: string;
+    source: string;
+    contentReference: string;
+    sha256: string;
+    parentId?: string | null;
+    taskId?: string | null;
+    metadata?: Record<string, unknown>;
+  }): Promise<EvidenceRecord>;
+  findById(id: string): Promise<EvidenceRecord | null>;
+  findBySha(engagementId: string, sha256: string): Promise<EvidenceRecord | null>;
+  listByEngagement(engagementId: string): Promise<EvidenceRecord[]>;
+}
 
 export interface EvidenceStoreInput {
   engagement_id: string;
@@ -39,7 +52,7 @@ export interface VerificationResult {
 }
 
 export interface EvidenceServiceDeps {
-  repository: EvidenceRepository;
+  repository: EvidenceRepositorySurface;
   objectStore: ObjectStore;
   logger: Logger;
 }

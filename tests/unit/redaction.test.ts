@@ -13,7 +13,10 @@ describe('secret redaction', () => {
       },
       ok: 'value',
     };
-    const output = redactRecord(input);
+    const output = redactRecord(input) as typeof input & {
+      nested: { api_key: string; authorization: string; metadata: { set_cookie: string } };
+      password: string;
+    };
     expect(output.password).toBe(REDACTED);
     expect(output.nested.api_key).toBe(REDACTED);
     expect(output.nested.authorization).toBe(REDACTED);

@@ -6,8 +6,7 @@ const hostEntry = z
   .string()
   .min(1)
   .max(253)
-  .regex(/^[a-z0-9.\-_\[\]:]+$/i, 'Invalid host entry');
-
+  .regex(/^[a-z0-9._\-[\]:]+$/i, 'Invalid host entry');
 const pathEntry = z
   .string()
   .min(1)

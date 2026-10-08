@@ -15,7 +15,7 @@
  */
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import { ConfigurationError, PlatformError, generateId } from '@aegis/shared';
 
 export interface SecretStore {

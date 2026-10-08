@@ -13,6 +13,9 @@ export default tseslint.config(
       'data/**',
       'coverage/**',
       'apps/web/dist/**',
+      'skills/**',
+      'upload/**',
+      'download/**',
       '**/*.js',
       '**/*.cjs',
       '**/*.mjs',
@@ -45,6 +48,13 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+    },
+  },
+  {
+    // CLI scripts and test code legitimately write to stdout.
+    files: ['scripts/**/*.ts', 'tests/**/*.ts', 'vitest.*.config.ts', 'vitest.shared.ts'],
+    rules: {
+      'no-console': 'off',
     },
   },
 );

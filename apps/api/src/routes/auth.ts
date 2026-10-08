@@ -54,7 +54,7 @@ export async function publicAuthRoutes(app: FastifyInstance): Promise<void> {
     return toUserResponse(user);
   });
 
-  app.post('/api/auth/login', async (request, reply) => {
+  app.post('/api/auth/login', async (request) => {
     const body = parseBody(LoginRequestSchema, request.body);
     const c = ctx();
 

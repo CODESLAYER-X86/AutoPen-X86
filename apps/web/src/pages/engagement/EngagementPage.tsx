@@ -1,6 +1,6 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { EngagementDetailSchema, EngagementSchema, type Engagement } from '@aegis/contracts';
+import { EngagementDetailSchema, EngagementSchema } from '@aegis/contracts';
 import { apiRequest, ApiError } from '../../lib/api.js';
 import { useResource } from '../../hooks/useResource.js';
 import { ErrorBanner, Loading } from '../../components/Feedback.js';

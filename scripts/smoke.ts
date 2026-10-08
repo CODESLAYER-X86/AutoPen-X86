@@ -7,19 +7,20 @@
  * Exits non-zero on any failure.
  */
 import { join } from 'node:path';
+import type { FastifyInstance } from 'fastify';
+import type { Pool } from 'pg';
 
-let app: import('fastify').FastifyInstance | null = null;
-let pool: import('pg').Pool | null = null;
+const state: { app: FastifyInstance | null; pool: Pool | null } = { app: null, pool: null };
 
 const BASE = await (async () => {
   const { loadConfig } = await import('@aegis/config');
   const { createPool } = await import('@aegis/database');
   const { buildApp } = await import('../apps/api/src/app.js');
   const config = loadConfig({ envFile: join(import.meta.dirname, '..', '.env') });
-  pool = createPool(config.database.url, { max: 2 });
-  app = await buildApp({ config, pool });
-  await app.listen({ port: 0, host: '127.0.0.1' });
-  const address = app.server.address();
+  state.pool = createPool(config.database.url, { max: 2 });
+  state.app = await buildApp({ config, pool: state.pool });
+  await state.app.listen({ port: 0, host: '127.0.0.1' });
+  const address = state.app.server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 4000;
   return `http://127.0.0.1:${port}`;
 })();
@@ -27,11 +28,13 @@ const BASE = await (async () => {
 let token = '';
 let failures = 0;
 
+type Json = Record<string, unknown> | null;
+
 async function call(
   method: string,
   path: string,
   body?: unknown,
-): Promise<{ status: number; json: any }> {
+): Promise<{ status: number; json: Json }> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (token) headers.authorization = `Bearer ${token}`;
@@ -41,9 +44,9 @@ async function call(
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await response.text();
-  let json: any = null;
+  let json: Json = null;
   try {
-    json = text === '' ? null : JSON.parse(text);
+    json = text === '' ? null : (JSON.parse(text) as Json);
   } catch {
     json = { raw: text };
   }
@@ -70,16 +73,16 @@ let r = await call('POST', '/api/auth/register', {
 check('register returns 201', r.status === 201, r);
 
 r = await call('POST', '/api/auth/login', { email, password: 'password1234' });
-check('login returns token', r.status === 200 && typeof r.json?.token === 'string', r);
-token = r.json?.token ?? '';
+check('login returns token', r.status === 200 && typeof (r.json as { token?: unknown })?.token === 'string', r);
+token = (r.json as { token?: string })?.token ?? '';
 
 r = await call('GET', '/api/auth/me');
-check('me returns the user', r.status === 200 && r.json?.email === email, r);
+check('me returns the user', r.status === 200 && (r.json as { email?: string })?.email === email, r);
 
 console.log('== projects & engagements ==');
 r = await call('POST', '/api/projects', { name: 'Smoke Project', description: '' });
-check('project created', r.status === 201 && /^PRJ_/.test(r.json?.id ?? ''), r);
-const projectId = r.json?.id;
+check('project created', r.status === 201 && /^PRJ_/.test((r.json as { id?: string })?.id ?? ''), r);
+const projectId = (r.json as { id?: string })?.id ?? '';
 
 r = await call('POST', '/api/engagements', {
   project_id: projectId,
@@ -87,15 +90,20 @@ r = await call('POST', '/api/engagements', {
   mode: 'PENTEST',
   description: '',
 });
-check('engagement created DRAFT', r.status === 201 && r.json?.status === 'DRAFT', r);
-const engagementId = r.json?.id;
+check('engagement created DRAFT', r.status === 201 && (r.json as { status?: string })?.status === 'DRAFT', r);
+const engagementId = (r.json as { id?: string })?.id ?? '';
 
 console.log('== scope ==');
 r = await call('POST', `/api/engagements/${engagementId}/targets`, {
   type: 'URL',
   value: 'http://127.0.0.1:9999/',
 });
-check('target without scope rejected', r.status === 422 && r.json?.error?.code === 'SCOPE_NOT_CONFIGURED', r);
+check(
+  'target without scope rejected',
+  r.status === 422 &&
+    ((r.json as { error?: { code?: string } })?.error?.code === 'SCOPE_NOT_CONFIGURED'),
+  r,
+);
 
 r = await call('POST', `/api/engagements/${engagementId}/scope`, {
   allowed_hosts: ['127.0.0.1'],
@@ -106,7 +114,7 @@ r = await call('POST', `/api/engagements/${engagementId}/scope`, {
   excluded_paths: [],
   destructive_actions_allowed: false,
 });
-check('scope saved', r.status === 200 && Array.isArray(r.json?.allowed_hosts), r);
+check('scope saved', r.status === 200 && Array.isArray((r.json as { allowed_hosts?: unknown })?.allowed_hosts), r);
 
 console.log('== targets ==');
 r = await call('POST', `/api/engagements/${engagementId}/targets`, {
@@ -119,34 +127,41 @@ r = await call('POST', `/api/engagements/${engagementId}/targets`, {
   type: 'URL',
   value: 'http://evil.example.com/',
 });
-check('out-of-scope target rejected', r.status === 422 && r.json?.error?.code === 'TARGET_OUT_OF_SCOPE', r);
+check(
+  'out-of-scope target rejected',
+  r.status === 422 &&
+    ((r.json as { error?: { code?: string } })?.error?.code === 'TARGET_OUT_OF_SCOPE'),
+  r,
+);
 
 r = await call('GET', `/api/engagements/${engagementId}`);
 check(
   'engagement auto-promoted to READY',
-  r.status === 200 && r.json?.engagement?.status === 'READY' && r.json?.readiness?.ready === true,
+  r.status === 200 &&
+    (r.json as { engagement?: { status?: string } })?.engagement?.status === 'READY' &&
+    (r.json as { readiness?: { ready?: boolean } })?.readiness?.ready === true,
   r,
 );
 
 console.log('== lifecycle ==');
 r = await call('POST', `/api/engagements/${engagementId}/start`);
-check('start -> RUNNING', r.status === 200 && r.json?.status === 'RUNNING', r);
+check('start -> RUNNING', r.status === 200 && (r.json as { status?: string })?.status === 'RUNNING', r);
 
 r = await call('POST', `/api/engagements/${engagementId}/pause`);
-check('pause -> PAUSED', r.status === 200 && r.json?.status === 'PAUSED', r);
+check('pause -> PAUSED', r.status === 200 && (r.json as { status?: string })?.status === 'PAUSED', r);
 
 r = await call('POST', `/api/engagements/${engagementId}/resume`);
-check('resume -> RUNNING', r.status === 200 && r.json?.status === 'RUNNING', r);
+check('resume -> RUNNING', r.status === 200 && (r.json as { status?: string })?.status === 'RUNNING', r);
 
 r = await call('POST', `/api/engagements/${engagementId}/cancel`);
-check('cancel -> CANCELLED', r.status === 200 && r.json?.status === 'CANCELLED', r);
+check('cancel -> CANCELLED', r.status === 200 && (r.json as { status?: string })?.status === 'CANCELLED', r);
 
 r = await call('POST', `/api/engagements/${engagementId}/start`);
 check('start after cancel rejected', r.status === 400, r);
 
 console.log('== telemetry ==');
 r = await call('GET', `/api/engagements/${engagementId}/events?limit=50`);
-const types: string[] = (r.json?.items ?? []).map((e: { type: string }) => e.type);
+const types: string[] = ((r.json as { items?: Array<{ type: string }> })?.items ?? []).map((e) => e.type);
 check(
   'events recorded',
   r.status === 200 &&
@@ -159,7 +174,7 @@ check(
 );
 
 r = await call('GET', `/api/engagements/${engagementId}/audit?limit=50`);
-const actions: string[] = (r.json?.items ?? []).map((a: { action: string }) => a.action);
+const actions: string[] = ((r.json as { items?: Array<{ action: string }> })?.items ?? []).map((a) => a.action);
 check(
   'audit trail recorded',
   r.status === 200 &&
@@ -173,12 +188,20 @@ check(
 r = await call('GET', '/api/tools');
 check(
   'tools list with implemented flags',
-  r.status === 200 && r.json?.implemented >= 1 && r.json?.total > r.json?.implemented,
-  { implemented: r.json?.implemented, total: r.json?.total },
+  r.status === 200 &&
+    (r.json as { implemented?: number })?.implemented !== undefined &&
+    (r.json as { implemented?: number; total?: number })!.implemented! >= 1 &&
+    (r.json as { total?: number; implemented?: number })!.total! > (r.json as { implemented?: number })!.implemented!,
+  { implemented: (r.json as { implemented?: number })?.implemented, total: (r.json as { total?: number })?.total },
 );
 
 r = await call('GET', '/api/meta');
-check('meta exposes model roles', r.status === 200 && r.json?.models?.strategic?.provider === 'mock', r);
+check(
+  'meta exposes model roles',
+  r.status === 200 &&
+    (r.json as { models?: { strategic?: { provider?: string } } })?.models?.strategic?.provider === 'mock',
+  r,
+);
 
 console.log('== security headers ==');
 const response = await fetch(`${BASE}/api/meta`);
@@ -194,11 +217,11 @@ check(
 
 if (failures > 0) {
   console.error(`\nSMOKE TEST FAILED: ${failures} failure(s)`);
-  await app?.close();
-  await pool?.end();
+  await state.app?.close();
+  await state.pool?.end();
   process.exit(1);
 }
 console.log('\nSMOKE TEST PASSED');
-await app?.close();
-await pool?.end();
+await state.app?.close();
+await state.pool?.end();
 process.exit(0);

@@ -2,17 +2,17 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createLogger, createMemorySink } from '@aegis/logging';
 import { EvidenceError, NotFoundError } from '@aegis/shared';
-import { EvidenceService, InMemoryObjectStore } from '@aegis/evidence';
-import type { EvidenceRecord, InsertEvidenceInput } from '@aegis/database';
+import { EvidenceService, InMemoryObjectStore, type EvidenceRepositorySurface } from '@aegis/evidence';
+import type { EvidenceRecord } from '@aegis/database';
 
 /** Minimal in-memory evidence repository for unit testing the service. */
-function fakeRepository() {
+function fakeRepository(): EvidenceRepositorySurface & {
+  rows: Map<string, EvidenceRecord>;
+} {
   const rows = new Map<string, EvidenceRecord>();
-  const inserted: InsertEvidenceInput[] = [];
   return {
     rows,
-    inserted,
-    async insert(input: InsertEvidenceInput): Promise<EvidenceRecord> {
+    async insert(input): Promise<EvidenceRecord> {
       const record: EvidenceRecord = {
         id: `EVD_${String(rows.size + 1).padStart(16, 'X')}`,
         engagement_id: input.engagementId,
@@ -26,7 +26,6 @@ function fakeRepository() {
         created_at: new Date().toISOString(),
       };
       rows.set(record.id, record);
-      inserted.push(input);
       return record;
     },
     async findById(id: string): Promise<EvidenceRecord | null> {
