@@ -1,0 +1,22 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/contracts" },
+    { "path": "packages/logging" },
+    { "path": "packages/config" },
+    { "path": "packages/security" },
+    { "path": "packages/database" },
+    { "path": "packages/events" },
+    { "path": "packages/queue" },
+    { "path": "packages/model-runtime" },
+    { "path": "packages/tools" },
+    { "path": "services/orchestrator" },
+    { "path": "services/evidence" },
+    { "path": "services/target-http" },
+    { "path": "services/browser" },
+    { "path": "services/worker-runtime" },
+    { "path": "services/knowledge" },
+    { "path": "apps/api" }
+  ]
+}

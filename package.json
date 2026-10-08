@@ -1,0 +1,50 @@
+{
+  "name": "aegis-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Autonomous web security testing and CTF-solving platform — Part 1 foundation (authorized use only)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "tsc -b && npm run build -w apps/web",
+    "build:server": "tsc -b",
+    "typecheck": "tsc -b && tsc --noEmit -p tests && tsc --noEmit -p scripts && npm run typecheck -w apps/web",
+    "lint": "eslint .",
+    "db:start": "tsx scripts/db/start.ts",
+    "db:stop": "tsx scripts/db/stop.ts",
+    "db:ensure": "tsx scripts/db/ensure.ts",
+    "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:reset": "tsx scripts/db/reset.ts",
+    "dev:api": "npm run db:ensure && npm run db:migrate && tsx watch apps/api/src/server.ts",
+    "dev:web": "npm run dev -w apps/web",
+    "start:api": "node apps/api/dist/server.js",
+    "test": "npm run db:ensure && npm run test:unit && npm run test:integration && npm run test:security && npm run test:e2e",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:security": "vitest run --config vitest.security.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@types/node": "^22.9.0",
+    "embedded-postgres": "17.5.0-beta.15",
+    "eslint": "^9.14.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.14.0",
+    "vitest": "^2.1.4"
+  },
+  "allowScripts": {
+    "@embedded-postgres/linux-x64@17.5.0-beta.15": true,
+    "esbuild@0.21.5": true
+  }
+}

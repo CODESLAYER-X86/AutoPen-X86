@@ -1,2 +1,25 @@
+# Environment / runtime
 skills/
 node_modules/
+data/
+*.log
+pg.log
+
+# Build output
+dist/
+*.tsbuildinfo
+apps/web/dist/
+
+# Secrets & env
+.env
+.env.local
+*.key
+
+# Test / coverage
+coverage/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
