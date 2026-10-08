@@ -12,9 +12,11 @@ import { IdentitiesTab } from './IdentitiesTab.js';
 import { ActivityTab } from './ActivityTab.js';
 import { EvidenceTab } from './EvidenceTab.js';
 import { FindingsTab } from './FindingsTab.js';
+import { AgentTab } from './AgentTab.js';
 
 const TABS = [
   'overview',
+  'agent',
   'targets',
   'scope',
   'identities',
@@ -122,10 +124,12 @@ export function EngagementPage(): ReactNode {
 
       {status === 'RUNNING' && (
         <div className="notice" style={{ marginBottom: 16 }}>
-          <h4>Status: RUNNING — autonomous loop not implemented</h4>
+          <h4>Status: RUNNING — autonomous agent available</h4>
           <p>
-            The lifecycle state is RUNNING, but the autonomous execution loop (strategic model,
-            tasks, workers) is scheduled for Part 2. No target interaction is happening.
+            The engagement is running. Start or inspect the autonomous agent (strategic leader,
+            tasks, workers, hypotheses) on the <strong>agent</strong> tab. The tactical HTTP and
+            browser tools arrive in Parts 3-4; until then workers report NEEDS_TOOL honestly
+            instead of pretending to test the target.
           </p>
         </div>
       )}
@@ -146,12 +150,15 @@ export function EngagementPage(): ReactNode {
       </div>
 
       {tab === 'overview' && <OverviewTab engagement={engagement} readiness={readiness} />}
+      {tab === 'agent' && (
+        <AgentTab engagementId={engagement.id} engagementStatus={status} mode={engagement.mode} />
+      )}
       {tab === 'targets' && <TargetsTab engagementId={engagement.id} onChanged={detail.reload} />}
       {tab === 'scope' && <ScopeTab engagementId={engagement.id} onChanged={detail.reload} />}
       {tab === 'identities' && <IdentitiesTab engagementId={engagement.id} />}
       {tab === 'activity' && <ActivityTab engagementId={engagement.id} />}
       {tab === 'evidence' && <EvidenceTab engagementId={engagement.id} />}
-      {tab === 'findings' && <FindingsTab />}
+      {tab === 'findings' && <FindingsTab engagementId={engagement.id} />}
 
       <p style={{ marginTop: 24 }}>
         <span className="mono" style={{ color: 'var(--text-muted)' }}>

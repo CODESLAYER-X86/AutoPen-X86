@@ -203,6 +203,84 @@ check(
   r,
 );
 
+console.log('== agent (Part 2) ==');
+r = await call('POST', '/api/engagements', {
+  project_id: projectId,
+  name: 'Smoke Agent Engagement',
+  mode: 'CTF',
+  description: 'Find the flag in the legacy endpoint.',
+});
+const agentEngagementId = (r.json as { id?: string })?.id ?? '';
+check('agent engagement created', r.status === 201 && /^ENG_/.test(agentEngagementId), r);
+
+await call('POST', `/api/engagements/${agentEngagementId}/scope`, {
+  allowed_hosts: ['127.0.0.1'],
+  allowed_domains: [],
+  allowed_ports: [9999],
+  allowed_schemes: ['http'],
+  excluded_hosts: [],
+  excluded_paths: [],
+  destructive_actions_allowed: false,
+});
+await call('POST', `/api/engagements/${agentEngagementId}/targets`, {
+  type: 'URL',
+  value: 'http://127.0.0.1:9999/app',
+});
+r = await call('POST', `/api/engagements/${agentEngagementId}/start`);
+check('agent engagement started', r.status === 200 && (r.json as { status?: string })?.status === 'RUNNING', r);
+
+r = await call('POST', `/api/engagements/${agentEngagementId}/runs`, { reason: 'smoke test' });
+const runId = (r.json as { id?: string })?.id ?? '';
+check(
+  'agent run created',
+  r.status === 201 && /^RUN_/.test(runId) && (r.json as { leader_model?: string })?.leader_model !== undefined,
+  r,
+);
+
+r = await call('GET', `/api/engagements/${agentEngagementId}/runs`);
+check(
+  'agent runs listed',
+  r.status === 200 && ((r.json as { total?: number })?.total ?? 0) >= 1,
+  r,
+);
+
+r = await call('GET', `/api/engagements/${agentEngagementId}/agent-metrics`);
+check(
+  'agent metrics exposed',
+  r.status === 200 &&
+    (r.json as { runs?: unknown })?.runs !== undefined &&
+    (r.json as { tokens?: unknown })?.tokens !== undefined,
+  r,
+);
+
+r = await call('POST', `/api/engagements/${agentEngagementId}/overrides`, {
+  kind: 'ADD_CTF_CLUE',
+  clue: 'The flag is hidden where old sessions go to die.',
+});
+check(
+  'human override ADD_CTF_CLUE audited',
+  r.status === 200 && /^OBS_/.test((r.json as { observation_id?: string })?.observation_id ?? ''),
+  r,
+);
+
+r = await call('POST', `/api/engagements/${agentEngagementId}/recovery`, {});
+check(
+  'crash recovery endpoint works',
+  r.status === 200 && typeof (r.json as { recovered?: number })?.recovered === 'number',
+  r,
+);
+
+r = await call('POST', `/api/engagements/${agentEngagementId}/runs/${runId}/cancel`, {});
+check('agent run cancelled by operator', r.status === 200 && (r.json as { cancelled?: boolean })?.cancelled === true, r);
+
+r = await call('GET', `/api/engagements/${agentEngagementId}/events?limit=200`);
+const agentTypes: string[] = ((r.json as { items?: Array<{ type: string }> })?.items ?? []).map((e) => e.type);
+check(
+  'agent events recorded',
+  r.status === 200 && agentTypes.includes('AGENT_RUN_CREATED') && agentTypes.includes('AGENT_RUN_CANCELLED'),
+  agentTypes.filter((t) => t.startsWith('AGENT') || t === 'HUMAN_OVERRIDE'),
+);
+
 console.log('== security headers ==');
 const response = await fetch(`${BASE}/api/meta`);
 check(

@@ -8,6 +8,16 @@ import type {
   TargetType,
   AssetType,
   EventType,
+  AgentRunStatus,
+  DecisionType,
+  TaskStatus,
+  TaskType,
+  WorkerType,
+  HypothesisStatus,
+  HypothesisType,
+  TestStatus,
+  FindingStatus,
+  TokenPurpose,
 } from '@aegis/shared';
 import type { Iso8601, JsonRecord } from '@aegis/shared';
 
@@ -126,6 +136,7 @@ export interface EventRecord {
   actor_id: string | null;
   payload: JsonRecord;
   occurred_at: Iso8601;
+  dedup_key: string | null;
 }
 
 export interface AuditRecord {
@@ -150,4 +161,237 @@ export interface EvidenceRecord {
   task_id: string | null;
   metadata: JsonRecord;
   created_at: Iso8601;
+}
+
+// ---------------------------------------------------------------------------
+// Part 2 — Agent Operating System records (spec Part 2 §2).
+// ---------------------------------------------------------------------------
+
+export interface AgentRunRecord {
+  id: string;
+  engagement_id: string;
+  status: AgentRunStatus;
+  reason: string | null;
+  strategy_version: number | null;
+  leader_model: string;
+  worker_model: string;
+  metrics: JsonRecord;
+  started_at: Iso8601 | null;
+  ended_at: Iso8601 | null;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface AgentDecisionRecord {
+  id: string;
+  run_id: string;
+  engagement_id: string;
+  cycle: number;
+  input_state_hash: string;
+  decision_type: DecisionType;
+  reasoning_summary: string;
+  payload: JsonRecord;
+  validation_status: 'PENDING' | 'VALID' | 'REJECTED' | 'FAILED';
+  rejection_code: string | null;
+  rejection_details: JsonRecord | null;
+  cycle_outcome: JsonRecord | null;
+  input_tokens: number;
+  output_tokens: number;
+  duration_ms: number | null;
+  created_at: Iso8601;
+}
+
+export interface HypothesisRecord {
+  id: string;
+  engagement_id: string;
+  type: HypothesisType;
+  statement: string;
+  status: HypothesisStatus;
+  confidence: number;
+  priority: number;
+  source: string;
+  parent_hypothesis_id: string | null;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+  confirmed_at: Iso8601 | null;
+  disproved_at: Iso8601 | null;
+}
+
+export interface HypothesisLinkRecord {
+  id: string;
+  hypothesis_id: string;
+  ref_type: 'OBSERVATION' | 'TEST' | 'EVIDENCE';
+  ref_id: string;
+  created_at: Iso8601;
+}
+
+export interface ObservationRecord {
+  id: string;
+  engagement_id: string;
+  task_id: string | null;
+  hypothesis_id: string | null;
+  type: string;
+  description: string;
+  confidence: number;
+  evidence_ids: string[];
+  metadata: JsonRecord;
+  created_at: Iso8601;
+}
+
+export interface TaskRecord {
+  id: string;
+  engagement_id: string;
+  run_id: string | null;
+  decision_id: string | null;
+  hypothesis_id: string | null;
+  type: TaskType;
+  objective: string;
+  worker_type: WorkerType;
+  status: TaskStatus;
+  priority: number;
+  expected_information_gain: number | null;
+  depends_on: string[];
+  allowed_tools: string[];
+  constraints: JsonRecord;
+  inputs: JsonRecord;
+  result: JsonRecord | null;
+  attempts: number;
+  max_attempts: number;
+  failure_code: string | null;
+  failure_reason: string | null;
+  idempotency_key: string;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+  started_at: Iso8601 | null;
+  completed_at: Iso8601 | null;
+}
+
+export interface TaskAttemptRecord {
+  id: string;
+  task_id: string;
+  engagement_id: string;
+  attempt: number;
+  worker_type: WorkerType;
+  worker_model: string;
+  status: string;
+  output: JsonRecord | null;
+  error_code: string | null;
+  error_message: string | null;
+  tool_calls: number;
+  network_requests: number;
+  input_tokens: number;
+  output_tokens: number;
+  duration_ms: number | null;
+  started_at: Iso8601;
+  ended_at: Iso8601 | null;
+}
+
+export interface TestRecord {
+  id: string;
+  engagement_id: string;
+  task_id: string | null;
+  hypothesis_id: string | null;
+  test_type: string;
+  target: string;
+  identity: string | null;
+  mutation_summary: string | null;
+  fingerprint: string;
+  status: TestStatus;
+  result_summary: string | null;
+  created_at: Iso8601;
+}
+
+export interface DeadEndRecord {
+  id: string;
+  engagement_id: string;
+  hypothesis_id: string | null;
+  description: string;
+  tests: string[];
+  reason: string;
+  created_at: Iso8601;
+}
+
+export interface StrategyRecord {
+  id: string;
+  engagement_id: string;
+  run_id: string | null;
+  version: number;
+  summary: string;
+  focus: string;
+  reason: string;
+  created_at: Iso8601;
+}
+
+export interface FindingRecord {
+  id: string;
+  engagement_id: string;
+  hypothesis_id: string | null;
+  title: string;
+  description: string;
+  severity: string;
+  status: FindingStatus;
+  evidence_ids: string[];
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface AgentMessageRecord {
+  id: string;
+  engagement_id: string;
+  run_id: string | null;
+  task_id: string | null;
+  channel: 'LEADER' | 'WORKER';
+  direction: 'OUTBOUND' | 'INBOUND';
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  untrusted_bytes: number;
+  metadata: JsonRecord;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  created_at: Iso8601;
+}
+
+export interface ModelCallRecord {
+  id: string;
+  engagement_id: string;
+  run_id: string | null;
+  task_id: string | null;
+  decision_id: string | null;
+  role: 'strategic' | 'tactical';
+  purpose: TokenPurpose;
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  duration_ms: number | null;
+  status: 'COMPLETED' | 'FAILED';
+  error_code: string | null;
+  created_at: Iso8601;
+}
+
+export interface EngagementBudgetRecord {
+  id: string;
+  engagement_id: string;
+  max_duration_seconds: number | null;
+  max_network_requests: number | null;
+  max_concurrent_requests: number | null;
+  max_browser_contexts: number | null;
+  max_model_calls: number | null;
+  max_model_tokens: number | null;
+  max_storage_bytes: number | null;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface EngagementUsageRecord {
+  engagement_id: string;
+  network_requests: number;
+  concurrent_requests: number;
+  browser_contexts: number;
+  model_calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  storage_bytes: number;
+  tool_calls: number;
+  updated_at: Iso8601;
 }

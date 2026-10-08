@@ -22,6 +22,12 @@ export const MetaResponseSchema = z.object({
     tools_total: z.number().int(),
     tools_implemented: z.number().int(),
     autonomous_run_loop: z.boolean(),
+    /** Part 2: which tactical tool families are actually implemented. */
+    autonomous_tools: z.object({
+      http: z.boolean(),
+      browser: z.boolean(),
+      knowledge: z.boolean(),
+    }),
   }),
 });
 export type MetaResponse = z.infer<typeof MetaResponseSchema>;

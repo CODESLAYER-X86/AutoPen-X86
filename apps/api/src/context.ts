@@ -20,6 +20,7 @@ import { EncryptedFileSecretStore, type SecretStore } from '@aegis/security';
 import { OrchestratorService } from '@aegis/orchestrator';
 import { EvidenceService, LocalFileSystemObjectStore, type ObjectStore } from '@aegis/evidence';
 import { ConfigurationError, type ModelRole } from '@aegis/shared';
+import { AgentEngineRegistry } from './agent-engine.js';
 
 export interface AppContext {
   config: AppConfig;
@@ -28,6 +29,7 @@ export interface AppContext {
   repos: Repositories;
   eventBus: EventBus;
   orchestrator: OrchestratorService;
+  agentEngines: AgentEngineRegistry;
   evidence: EvidenceService;
   objectStore: ObjectStore;
   secretStore: SecretStore;
@@ -86,16 +88,6 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     await repos.events.insert(event);
   });
 
-  const orchestrator = new OrchestratorService({
-    engagements: repos.engagements,
-    targets: repos.targets,
-    scope: repos.scope,
-    events: repos.events,
-    audit: repos.audit,
-    eventBus,
-    logger,
-  });
-
   const objectStore = new LocalFileSystemObjectStore(config.storage.localPath);
   const evidence = new EvidenceService({ repository: repos.evidence, objectStore, logger });
 
@@ -118,13 +110,35 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     tactical: buildModelProvider('tactical', config.models.tactical, config.models.requestTimeoutMs),
   });
 
+  const agentEngines = new AgentEngineRegistry({
+    config,
+    logger,
+    repos,
+    eventBus,
+    modelRouter,
+    toolRegistry,
+    toolGateway,
+  });
+
+  const orchestratorWithAgent = new OrchestratorService({
+    engagements: repos.engagements,
+    targets: repos.targets,
+    scope: repos.scope,
+    events: repos.events,
+    audit: repos.audit,
+    eventBus,
+    logger,
+    agentLauncher: agentEngines,
+  });
+
   return {
     config,
     logger,
     pool,
     repos,
     eventBus,
-    orchestrator,
+    orchestrator: orchestratorWithAgent,
+    agentEngines,
     evidence,
     objectStore,
     secretStore,

@@ -32,8 +32,14 @@ export async function metaRoutes(app: FastifyInstance): Promise<void> {
       capabilities: {
         tools_total: tools.length,
         tools_implemented: tools.filter((tool) => tool.implemented).length,
-        // Explicit, honest signal: the autonomous loop is not in Part 1.
-        autonomous_run_loop: false,
+        // Part 2: the autonomous agent loop is REAL. Tactical HTTP/browser
+        // TOOLS remain Part 3/4 (workers report NEEDS_TOOL honestly).
+        autonomous_run_loop: true,
+        autonomous_tools: {
+          http: false, // Part 3
+          browser: false, // Part 4
+          knowledge: false, // Part 5
+        },
       },
     });
   });

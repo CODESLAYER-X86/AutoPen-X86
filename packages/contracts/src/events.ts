@@ -16,6 +16,7 @@ export const EngagementEventSchema = z.object({
   actor_id: z.string().nullable(),
   payload: z.record(z.unknown()),
   occurred_at: IsoDateTimeSchema,
+  dedup_key: z.string().nullable().optional(),
 });
 export type EngagementEvent = z.infer<typeof EngagementEventSchema>;
 
@@ -28,4 +29,9 @@ export interface PlatformEvent {
   actor_id?: string | null;
   payload: Record<string, unknown>;
   occurred_at: string;
+  /**
+   * Idempotency key (Part 2 §65): when present, the persisting layer treats
+   * duplicate inserts as no-ops (recovery replays stay idempotent).
+   */
+  dedup_key?: string | null;
 }

@@ -29,6 +29,7 @@ import { targetRoutes } from './routes/targets.js';
 import { identityRoutes } from './routes/identities.js';
 import { lifecycleRoutes } from './routes/lifecycle.js';
 import { telemetryRoutes } from './routes/telemetry.js';
+import { agentRoutes } from './routes/agent.js';
 
 export interface BuildAppOptions {
   config?: AppConfig;
@@ -91,6 +92,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     await authenticated.register(identityRoutes);
     await authenticated.register(lifecycleRoutes);
     await authenticated.register(telemetryRoutes);
+    await authenticated.register(agentRoutes);
   });
 
   return app;

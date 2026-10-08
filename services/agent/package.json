@@ -1,0 +1,28 @@
+{
+  "name": "@aegis/agent",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aegis/contracts": "0.1.0",
+    "@aegis/database": "0.1.0",
+    "@aegis/events": "0.1.0",
+    "@aegis/logging": "0.1.0",
+    "@aegis/model-runtime": "0.1.0",
+    "@aegis/security": "0.1.0",
+    "@aegis/shared": "0.1.0",
+    "@aegis/tools": "0.1.0",
+    "@aegis/worker-runtime": "0.2.0"
+  }
+}

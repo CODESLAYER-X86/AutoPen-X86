@@ -16,7 +16,15 @@ export function workspaceAliases(): Record<string, string> {
     'model-runtime',
     'tools',
   ];
-  const services = ['orchestrator', 'evidence', 'target-http', 'browser', 'worker-runtime', 'knowledge'];
+  const services = [
+    'orchestrator',
+    'evidence',
+    'target-http',
+    'browser',
+    'worker-runtime',
+    'agent',
+    'knowledge',
+  ];
   const aliases: Record<string, string> = {};
   for (const name of packages) {
     aliases[`@aegis/${name}`] = resolve(REPO_ROOT, `packages/${name}/src/index.ts`);

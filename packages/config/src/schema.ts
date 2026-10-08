@@ -79,6 +79,31 @@ export const EnvSchema = z.object({
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
     .default(false),
+
+  // --- Part 2: Agent Operating System tunables (spec §37-§40, §54, §66) ---
+  AGENT_MAX_CYCLES: positiveInt.default(40),
+  AGENT_MAX_IDLE_CYCLES: positiveInt.default(3),
+  AGENT_IDLE_BACKOFF_MS: positiveInt.default(150),
+  AGENT_MAX_WAIT_MS: positiveInt.default(5000),
+  AGENT_MAX_CONCURRENT_TASKS: positiveInt.default(2),
+  AGENT_WORKER_MAX_TURNS: positiveInt.default(24),
+  AGENT_WORKER_MAX_OUTPUT_TOKENS: positiveInt.default(2048),
+
+  AGENT_QUOTA_RPM: positiveInt.default(60),
+  AGENT_QUOTA_INPUT_TPM: positiveInt.default(120000),
+  AGENT_QUOTA_OUTPUT_TPM: positiveInt.default(16000),
+  AGENT_QUOTA_RPD: positiveInt.default(2000),
+
+  AGENT_TOKEN_BUDGET_LEADER: positiveInt.default(400000),
+  AGENT_TOKEN_BUDGET_WORKER: positiveInt.default(1200000),
+  AGENT_TOKEN_BUDGET_KNOWLEDGE: positiveInt.default(100000),
+  AGENT_TOKEN_BUDGET_SUMMARIZATION: positiveInt.default(50000),
+  AGENT_TOKEN_BUDGET_VERIFICATION: positiveInt.default(150000),
+
+  AGENT_ENGAGEMENT_MAX_MODEL_CALLS: z.coerce.number().int().min(1).optional(),
+  AGENT_ENGAGEMENT_MAX_MODEL_TOKENS: z.coerce.number().int().min(1).optional(),
+  AGENT_ENGAGEMENT_MAX_NETWORK_REQUESTS: z.coerce.number().int().min(1).optional(),
+  AGENT_ENGAGEMENT_MAX_DURATION_SECONDS: z.coerce.number().int().min(1).optional(),
 });
 
 export type EnvRaw = z.infer<typeof EnvSchema>;
@@ -110,5 +135,35 @@ export interface AppConfig {
     toolsBrowser: boolean;
     knowledgeSearch: boolean;
     reporting: boolean;
+  };
+  /** Part 2: Agent OS tunables. */
+  agent: {
+    loop: {
+      maxCycles: number;
+      maxIdleCycles: number;
+      idleBackoffMs: number;
+      maxWaitMs: number;
+      maxConcurrentTasks: number;
+    };
+    worker: { maxTurns: number; maxOutputTokens: number };
+    quota: {
+      requestsPerMinute: number;
+      inputTokensPerMinute: number;
+      outputTokensPerMinute: number;
+      requestsPerDay: number;
+    };
+    tokenBudgets: {
+      leader: number;
+      worker: number;
+      knowledge: number;
+      summarization: number;
+      verification: number;
+    };
+    engagementBudgetDefaults: {
+      maxModelCalls: number | null;
+      maxModelTokens: number | null;
+      maxNetworkRequests: number | null;
+      maxDurationSeconds: number | null;
+    };
   };
 }

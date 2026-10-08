@@ -62,3 +62,31 @@ request REQ_… -> log http.request -> tool TOOL_… (later parts)
 
 Payloads are platform-generated structured data. Raw target-controlled
 content belongs in evidence, not in events (spec §1.4).
+
+---
+
+# Event Vocabulary — Part 2 additions (spec Part 2 §59)
+
+New correlation carriers: `RUN_` ids appear in payloads; task ids and trace
+ids continue to correlate every agent operation.
+
+| Event | When |
+|---|---|
+| `AGENT_RUN_CREATED / STARTED / PAUSED / RESUMED / WAITING / COMPLETED / FAILED / CANCELLED` | run lifecycle (§3) |
+| `AGENT_CYCLE_COMPLETED` | every decision cycle, with its outcome (§31) |
+| `LEADER_DECISION_RECORDED / REJECTED` | decision validation results (§10) |
+| `TASK_QUEUED / DISPATCHED / RETRY / CANCELLED / RECOVERY_PENDING / BLOCKED` | scheduler mechanics |
+| `WORKER_STARTED / COMPLETED` | worker execution (§2 TaskAttempt) |
+| `HYPOTHESIS_CONFIRMED / DISPROVED / ABANDONED` | hypothesis resolution (§22) |
+| `TEST_RECORDED / TEST_DUPLICATE` | test registry + dedup (§28-§29) |
+| `DEAD_END_RECORDED` | dead-end memory (§27) |
+| `STRATEGY_CHANGED` | strategy memory version bump (§49) |
+| `VERIFICATION_REQUESTED` | leader or worker requests verification (§56) |
+| `FINDING_REJECTED` | promotion ladder rejection (§55) |
+| `QUOTA_DELAY / QUOTA_EXHAUSTED` | quota pressure (§37-§40) |
+| `OSCILLATION_DETECTED` | strategy oscillation without new evidence (§52) |
+| `LOOP_PROTECTION_TRIGGERED` | anti-loop actions fired (§51) |
+| `HUMAN_OVERRIDE` | operator intervention, always audited (§46) |
+
+Events may carry a `dedup_key` (unique index): recovery replays never
+duplicate audit records (§65).

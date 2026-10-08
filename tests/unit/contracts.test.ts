@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AgentDecisionSchema,
   CreateEngagementRequestSchema,
   CreateTargetRequestSchema,
   RegisterRequestSchema,
   ScopeRequestSchema,
-  validateAgentDecision,
+  LeaderDecisionSchema,
+  validateLeaderDecision,
+  validateWorkerOutput,
+  validateWorkerTurn,
 } from '@aegis/contracts';
 import { ValidationError } from '@aegis/shared';
 
@@ -90,43 +92,160 @@ describe('API contract schemas (spec §33: API schema validation)', () => {
   });
 });
 
-describe('agent decision validation (spec §20 principle)', () => {
+describe('agent decision validation (Part 2 §9: structured leader decisions)', () => {
   it('accepts the spec example decision', () => {
-    const decision = validateAgentDecision({
+    const decision = validateLeaderDecision({
       decision: 'CREATE_TASK',
-      reason: 'The endpoint appears to expose an object identifier.',
-      priority: 0.82,
-      task_type: 'AUTHORIZATION_TEST',
-      target: 'endpoint_123',
-      identity: 'identity_02',
+      reasoning_summary: 'Two object identifiers were observed; authorization behavior not yet compared.',
+      task: {
+        objective: 'Determine whether object authorization is enforced on the user record endpoint.',
+        task_type: 'AUTHORIZATION_ANALYSIS',
+        priority: 0.91,
+        expected_information_gain: 0.8,
+        inputs: { endpoint: '/api/users/{id}', observed_ids: ['381', '382'] },
+      },
     });
     expect(decision.decision).toBe('CREATE_TASK');
-    expect(decision.priority).toBe(0.82);
+    if (decision.decision === 'CREATE_TASK') {
+      expect(decision.task.priority).toBe(0.91);
+    }
   });
 
   it('fails closed on hallucinated decision enums and malformed payloads', () => {
-    expect(() => validateAgentDecision({ decision: 'NUKE_EVERYTHING' })).toThrowError(
+    expect(() => validateLeaderDecision({ decision: 'NUKE_EVERYTHING' })).toThrowError(
       ValidationError,
     );
     expect(() =>
-      validateAgentDecision({ decision: 'CREATE_TASK', reason: '', priority: 0.5 }),
+      validateLeaderDecision({
+        decision: 'CREATE_TASK',
+        reasoning_summary: '',
+        task: { objective: 'x'.repeat(10), task_type: 'RECON' },
+      }),
     ).toThrowError(ValidationError);
+    expect(() => validateLeaderDecision('just a string model answer')).toThrowError(ValidationError);
+    // Extra fields are rejected: the schema is strict — prompt-injection-style
+    // additions such as shell_command never survive validation.
     expect(() =>
-      validateAgentDecision({ decision: 'CREATE_TASK', reason: 'ok', priority: 5 }),
-    ).toThrowError(ValidationError);
-    expect(() => validateAgentDecision('just a string model answer')).toThrowError(ValidationError);
-    // Extra fields are rejected: the schema is strict.
-    expect(() =>
-      validateAgentDecision({
+      validateLeaderDecision({
         decision: 'STOP',
-        reason: 'done',
-        priority: 1,
+        reasoning_summary: 'done',
+        objective_satisfied: true,
         shell_command: 'rm -rf /', // hallucinated injection attempt
+      }),
+    ).toThrowError(ValidationError);
+    // Unknown task_type / worker_type enum values fail closed.
+    expect(() =>
+      validateLeaderDecision({
+        decision: 'CREATE_TASK',
+        reasoning_summary: 'ok',
+        task: { objective: 'test objective here', task_type: 'NOT_A_REAL_TYPE' },
       }),
     ).toThrowError(ValidationError);
   });
 
+  it('accepts every decision type in the Part 2 vocabulary', () => {
+    const ok = (raw: unknown) => expect(() => validateLeaderDecision(raw)).not.toThrow();
+    ok({
+      decision: 'CREATE_PARALLEL_TASKS',
+      reasoning_summary: 'Three independent CTF interpretations can run in parallel.',
+      tasks: [
+        { objective: 'Probe the legacy endpoint path for the clue.', task_type: 'HTTP_ANALYSIS' },
+        { objective: 'Inspect the hidden JS route referenced by the clue.', task_type: 'SOURCE_ANALYSIS' },
+      ],
+    });
+    ok({
+      decision: 'UPDATE_HYPOTHESIS',
+      reasoning_summary: 'New observation contradicts the caching explanation.',
+      hypothesis_id: 'HYP_ABCDEFGHIJKLMNOP',
+      change: 'DECREASE_CONFIDENCE',
+      confidence: 0.2,
+    });
+    ok({
+      decision: 'REQUEST_KNOWLEDGE',
+      reasoning_summary: 'Need known bypass techniques for this framework.',
+      query: 'session fixation patterns in Express apps',
+    });
+    ok({
+      decision: 'REQUEST_RECON',
+      reasoning_summary: 'Attack surface is unmapped.',
+      focus: 'Discover the API surface under /api',
+    });
+    ok({
+      decision: 'REQUEST_VERIFICATION',
+      reasoning_summary: 'Behavior needs reproduction before promotion.',
+      hypothesis_id: 'HYP_ABCDEFGHIJKLMNOP',
+    });
+    ok({ decision: 'WAIT', reasoning_summary: 'Await pending authentication task.' });
+    ok({ decision: 'STOP', reasoning_summary: 'Objective satisfied.', objective_satisfied: true });
+    ok({ decision: 'PAUSE', reasoning_summary: 'Operator interaction required.' });
+  });
+
   it('exposes the schema for downstream agents', () => {
-    expect(AgentDecisionSchema.shape.decision.options).toContain('STOP');
+    expect(LeaderDecisionSchema.options.length).toBe(9);
+  });
+});
+
+describe('worker output validation (Part 2 §16/§17: structured worker results)', () => {
+  it('accepts the spec example worker output', () => {
+    const output = validateWorkerOutput({
+      task_id: 'TSK_ABCDEFGHIJKLMNOP',
+      status: 'COMPLETED',
+      observations: [
+        {
+          type: 'AUTHORIZATION_BEHAVIOR',
+          description: 'Identity A received object data associated with Identity B.',
+          confidence: 0.91,
+        },
+      ],
+      evidence_ids: ['EVD_ABCDEFGHIJKLMNOP'],
+      hypothesis_updates: [
+        {
+          hypothesis_id: 'HYP_ABCDEFGHIJKLMNOP',
+          change: 'INCREASE_CONFIDENCE',
+          confidence: 0.86,
+        },
+      ],
+      recommended_next_action: { type: 'VERIFY', reason: 'Repeat with a fresh session.' },
+    });
+    expect(output.status).toBe('COMPLETED');
+    expect(output.observations).toHaveLength(1);
+  });
+
+  it('fails closed on invalid statuses, out-of-range confidence, unknown fields', () => {
+    expect(() =>
+      validateWorkerOutput({ task_id: 'TSK_ABCDEFGHIJKLMNOP', status: 'SORTA_DONE' }),
+    ).toThrowError(ValidationError);
+    expect(() =>
+      validateWorkerOutput({
+        task_id: 'TSK_ABCDEFGHIJKLMNOP',
+        status: 'COMPLETED',
+        observations: [{ type: 'X', description: 'd', confidence: 1.5 }],
+      }),
+    ).toThrowError(ValidationError);
+    expect(() =>
+      validateWorkerOutput({
+        task_id: 'TSK_ABCDEFGHIJKLMNOP',
+        status: 'COMPLETED',
+        secret_exfiltration: 'vault-contents', // strict schema rejects additions
+      }),
+    ).toThrowError(ValidationError);
+  });
+
+  it('validates worker turns: tool calls and finals are discriminated', () => {
+    expect(() =>
+      validateWorkerTurn({ type: 'TOOL_CALL', tool: 'parser.jwt', input: { token: 'x' } }),
+    ).not.toThrow();
+    expect(() =>
+      validateWorkerTurn({ type: 'FINAL', result: { task_id: 'TSK_ABCDEFGHIJKLMNOP', status: 'BLOCKED' } }),
+    ).not.toThrow();
+    expect(() =>
+      validateWorkerTurn({ type: 'SHELL_EXEC', command: 'cat /etc/passwd' }),
+    ).toThrowError(ValidationError);
+    // Malformed tool NAMES fail the schema; well-formed but unregistered
+    // names (e.g. shell.exec) are rejected by the ToolGateway/allow-list —
+    // schema validates shape, the registry validates existence.
+    expect(() =>
+      validateWorkerTurn({ type: 'TOOL_CALL', tool: 'Shell Exec!', input: {} }),
+    ).toThrowError(ValidationError);
   });
 });

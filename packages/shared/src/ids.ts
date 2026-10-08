@@ -37,7 +37,16 @@ export type IdPrefix =
   | 'REQ'
   | 'TOOL'
   | 'SEC'
-  | 'JOB';
+  | 'JOB'
+  // Part 2 prefixes (Agent Operating System).
+  | 'RUN' // agent run
+  | 'DCS' // leader decision
+  | 'ATT' // task attempt / worker run
+  | 'DDE' // dead end
+  | 'STG' // strategy snapshot
+  | 'MSG' // agent message (prompt/response audit)
+  | 'MCL' // model call (token usage log)
+  | 'BGT'; // engagement budget
 
 /** Matches `<PREFIX>_<16..32 base32 chars>` and is case sensitive. */
 export const ID_PATTERN = /^[A-Z]{2,6}_[A-Z2-7]{16,32}$/;

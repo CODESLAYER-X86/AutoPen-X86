@@ -1,6 +1,6 @@
 {
   "name": "@aegis/worker-runtime",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -16,6 +16,12 @@
   },
   "dependencies": {
     "@aegis/contracts": "0.1.0",
-    "@aegis/shared": "0.1.0"
+    "@aegis/database": "0.1.0",
+    "@aegis/events": "0.1.0",
+    "@aegis/logging": "0.1.0",
+    "@aegis/model-runtime": "0.1.0",
+    "@aegis/security": "0.1.0",
+    "@aegis/shared": "0.1.0",
+    "@aegis/tools": "0.1.0"
   }
 }

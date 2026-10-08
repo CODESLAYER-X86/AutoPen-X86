@@ -1,18 +1,17 @@
 /**
- * Orchestrator service (Part 1 scope).
+ * Orchestrator service.
  *
  * Owns the engagement lifecycle: readiness evaluation, deterministic status
  * transitions, event emission and audit records. It sits ABOVE the model
- * layer (spec §40): even when the strategic model exists (Part 2), its
- * structured decisions are executed through this service, never directly
- * against the database or the target.
+ * layer (spec §40): the strategic model's structured decisions are executed
+ * through this service, never directly against the database or the target.
  *
- * NOT implemented in Part 1 (explicit): the autonomous run loop, task
- * compilation/scheduling, hypothesis management, replanning. Calling
- * startRun() fails with NotImplementedError rather than pretending.
+ * Part 2: `startRun` delegates to the injected AgentLauncher (the Agent OS
+ * engine). When no launcher is configured (e.g. minimal deployments) the
+ * honest NotImplementedError remains.
  */
 import type { Logger } from '@aegis/logging';
-import type { PlatformEvent, Engagement } from '@aegis/contracts';
+import type { PlatformEvent } from '@aegis/contracts';
 import type {
   EngagementRecord,
   EventsRepository,
@@ -29,6 +28,17 @@ import {
 } from '@aegis/shared';
 import { EngagementStateMachine } from './state-machine.js';
 
+/**
+ * Bridge to the Agent Operating System (implemented by @aegis/agent via the
+ * composition root; kept as an interface here to avoid a package cycle).
+ */
+export interface AgentLauncher {
+  start(engagement: EngagementRecord, actorId: string | null, reason?: string): Promise<{ runId: string }>;
+  pause(engagementId: string, actorId: string | null, reason?: string): Promise<void>;
+  resume(engagementId: string, actorId: string | null): Promise<void>;
+  cancel(engagementId: string, actorId: string | null, reason?: string): Promise<void>;
+}
+
 export interface OrchestratorDeps {
   engagements: EngagementsRepository;
   targets: TargetsRepository;
@@ -37,6 +47,8 @@ export interface OrchestratorDeps {
   audit: AuditRepository;
   eventBus: { publish(event: PlatformEvent): Promise<void> };
   logger: Logger;
+  /** Part 2: agent engine bridge; optional for minimal deployments. */
+  agentLauncher?: AgentLauncher;
 }
 
 export interface ReadinessResult {
@@ -132,8 +144,11 @@ export class OrchestratorService {
     return { engagement: updated, from, to };
   }
 
-  /** start: DRAFT auto-promotes to READY when preconditions hold, then -> RUNNING. */
-  async start(engagement: EngagementRecord, actorId: string | null): Promise<TransitionResult> {
+  /** start: DRAFT auto-promotes to READY when preconditions hold, then -> RUNNING.
+   * The autonomous run is started EXPLICITLY via startRun()/the agent API —
+   * lifecycle start and autonomous execution are deliberately decoupled. */
+  async start(engagement: EngagementRecord, actorId: string | null, reason?: string): Promise<TransitionResult> {
+    let current = engagement;
     if (engagement.status === 'DRAFT') {
       const readiness = await this.evaluateReadiness(engagement.id);
       if (!readiness.ready) {
@@ -143,28 +158,37 @@ export class OrchestratorService {
           readiness,
         );
       }
-      const promoted = await this.transition(engagement, 'READY', { actorId });
-      return this.transition(promoted.engagement, 'RUNNING', { actorId });
+      current = (await this.transition(engagement, 'READY', { actorId })).engagement;
     }
-    if (engagement.status === 'READY') {
-      return this.transition(engagement, 'RUNNING', { actorId });
-    }
-    if (engagement.status === 'RUNNING') {
+    if (current.status === 'RUNNING') {
       throw new ValidationError('Engagement is already running', 'INVALID_ENGAGEMENT_TRANSITION');
     }
-    return this.transition(engagement, 'RUNNING', { actorId });
+    void reason;
+    return this.transition(current, 'RUNNING', { actorId });
   }
 
   async pause(engagement: EngagementRecord, actorId: string | null): Promise<TransitionResult> {
-    return this.transition(engagement, 'PAUSED', { actorId });
+    const result = await this.transition(engagement, 'PAUSED', { actorId });
+    if (this.deps.agentLauncher) {
+      await this.deps.agentLauncher.pause(engagement.id, actorId, 'engagement paused').catch(() => undefined);
+    }
+    return result;
   }
 
   async resume(engagement: EngagementRecord, actorId: string | null): Promise<TransitionResult> {
-    return this.transition(engagement, 'RUNNING', { actorId });
+    const result = await this.transition(engagement, 'RUNNING', { actorId });
+    if (this.deps.agentLauncher) {
+      await this.deps.agentLauncher.resume(engagement.id, actorId).catch(() => undefined);
+    }
+    return result;
   }
 
   async cancel(engagement: EngagementRecord, actorId: string | null): Promise<TransitionResult> {
-    return this.transition(engagement, 'CANCELLED', { actorId });
+    const result = await this.transition(engagement, 'CANCELLED', { actorId });
+    if (this.deps.agentLauncher) {
+      await this.deps.agentLauncher.cancel(engagement.id, actorId, 'engagement cancelled').catch(() => undefined);
+    }
+    return result;
   }
 
   async complete(engagement: EngagementRecord, actorId: string | null): Promise<TransitionResult> {
@@ -177,14 +201,16 @@ export class OrchestratorService {
 
   /**
    * The autonomous execution loop (strategic model -> decisions -> tasks ->
-   * workers -> observations -> replanning). Explicitly NOT implemented in
-   * Part 1 — this is the documented boundary for Part 2.
+   * workers -> observations -> replanning). Implemented in Part 2 via the
+   * injected AgentLauncher bridge; honest 501 when no launcher is wired.
    */
-  startRun(_engagement: Pick<Engagement, 'id'>): never {
-    void _engagement;
+  async startRun(engagement: EngagementRecord, actorId: string | null, reason?: string): Promise<{ runId: string }> {
+    if (this.deps.agentLauncher) {
+      return this.deps.agentLauncher.start(engagement, actorId, reason);
+    }
     throw new NotImplementedError(
-      'The autonomous run loop is not implemented in Part 1; it is the subject of Part 2 (Agent Operating System)',
-      'ORCHESTRATOR_RUN_LOOP_NOT_IMPLEMENTED',
+      'No agent launcher is configured in this deployment; the Agent OS engine (Part 2) must be wired at composition time',
+      'AGENT_LAUNCHER_NOT_CONFIGURED',
     );
   }
 }

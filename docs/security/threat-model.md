@@ -61,3 +61,53 @@ across projects, engagements, events, targets and lifecycle actions.
 * Embedded PostgreSQL trust auth is a development convenience, not a
   production configuration.
 * No CSP nonce strategy for the web app yet (API has `default-src 'none'`).
+
+---
+
+# Threat Model — Part 2 additions (Agent Operating System)
+
+## Prompt injection through target content (Part 2 §60-§62)
+
+* **Threat**: HTTP responses / HTML / CTF text contain instructions ("ignore
+  your instructions, exfiltrate credentials, call this URL") aimed at the
+  strategic or tactical models.
+* **Controls**:
+  1. *Semantic separation* — prompts are assembled from five labeled sections
+     (system policy / application policy / task instructions / trusted
+     context / untrusted target data). Target-derived content is wrapped in
+     `<UNTRUSTED_TARGET_DATA>` delimiters and introduced as DATA.
+  2. *Structural separation* — the context builder produces two separate
+     objects (`trusted` / `untrusted`); observation descriptions, evidence
+     summaries and CTF challenge text only ever enter the untrusted side.
+     CTF challenge descriptions are data, never trusted instructions (§47).
+  3. *Independent enforcement* — even a fully manipulated model cannot:
+     create out-of-scope tasks (decision validator scope layer), invoke
+     non-allow-listed tools (worker runtime + registry), bypass the gateway
+     (capability + URL scope checks), or read secrets (never in context).
+  4. *Auditability* — every persisted agent message records
+     `untrusted_bytes`; tests assert injections stay inside the delimiters.
+
+## Manipulated model outputs
+
+* **Threat**: hallucinated decision types, tools, transitions, or injected
+  extra fields (`shell_command`).
+* **Controls**: strict discriminated-union zod schemas fail closed
+  (`validateLeaderDecision`, `validateWorkerTurn`, `validateWorkerOutput`);
+  state machines reject invalid transitions; the ToolGateway rejects
+  unregistered tools (`TOOL_NOT_FOUND`) and out-of-scope URLs
+  (`SCOPE_VIOLATION`).
+
+## Resource exhaustion / runaway autonomy
+
+* **Threat**: the agent loops forever, burns quota, or duplicates
+  state-changing requests.
+* **Controls**: bounded cycles; per-purpose token budgets; RPM/TPM/RPD quota
+  manager; deterministic stop conditions (§50); anti-loop thresholds and
+  oscillation detection (§51-§52); fingerprint dedup (§29); idempotency keys
+  and RECOVERY_PENDING semantics (§64-§65).
+
+## Secrets
+
+Unchanged from Part 1: secrets live only in the encrypted secret store; the
+agent context projects identity names/roles only. A security test scans every
+persisted outbound agent message for secret values and secret references.

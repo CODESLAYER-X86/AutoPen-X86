@@ -75,6 +75,38 @@ function toAppConfig(raw: EnvRaw, googleApiKeyConfigured: boolean): AppConfig {
       knowledgeSearch: raw.FEATURE_KNOWLEDGE_SEARCH,
       reporting: raw.FEATURE_REPORTING,
     },
+    agent: {
+      loop: {
+        maxCycles: raw.AGENT_MAX_CYCLES,
+        maxIdleCycles: raw.AGENT_MAX_IDLE_CYCLES,
+        idleBackoffMs: raw.AGENT_IDLE_BACKOFF_MS,
+        maxWaitMs: raw.AGENT_MAX_WAIT_MS,
+        maxConcurrentTasks: raw.AGENT_MAX_CONCURRENT_TASKS,
+      },
+      worker: {
+        maxTurns: raw.AGENT_WORKER_MAX_TURNS,
+        maxOutputTokens: raw.AGENT_WORKER_MAX_OUTPUT_TOKENS,
+      },
+      quota: {
+        requestsPerMinute: raw.AGENT_QUOTA_RPM,
+        inputTokensPerMinute: raw.AGENT_QUOTA_INPUT_TPM,
+        outputTokensPerMinute: raw.AGENT_QUOTA_OUTPUT_TPM,
+        requestsPerDay: raw.AGENT_QUOTA_RPD,
+      },
+      tokenBudgets: {
+        leader: raw.AGENT_TOKEN_BUDGET_LEADER,
+        worker: raw.AGENT_TOKEN_BUDGET_WORKER,
+        knowledge: raw.AGENT_TOKEN_BUDGET_KNOWLEDGE,
+        summarization: raw.AGENT_TOKEN_BUDGET_SUMMARIZATION,
+        verification: raw.AGENT_TOKEN_BUDGET_VERIFICATION,
+      },
+      engagementBudgetDefaults: {
+        maxModelCalls: raw.AGENT_ENGAGEMENT_MAX_MODEL_CALLS ?? null,
+        maxModelTokens: raw.AGENT_ENGAGEMENT_MAX_MODEL_TOKENS ?? null,
+        maxNetworkRequests: raw.AGENT_ENGAGEMENT_MAX_NETWORK_REQUESTS ?? null,
+        maxDurationSeconds: raw.AGENT_ENGAGEMENT_MAX_DURATION_SECONDS ?? null,
+      },
+    },
   };
 }
 

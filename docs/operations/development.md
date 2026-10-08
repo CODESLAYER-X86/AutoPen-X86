@@ -75,3 +75,40 @@ code changes; `google` providers require `GOOGLE_API_KEY` in the environment.
 * Terminate TLS in front of the API; set `CORS_ORIGINS` explicitly
 * Set `SECRET_STORE_MASTER_KEY` (base64, 32 bytes) instead of the dev key file
 * Run `node apps/api/dist/server.js` after `npm run build`
+
+---
+
+# Development — Part 2 (Agent Operating System)
+
+## Running the autonomous agent locally
+
+1. `npm run dev:api` (migrations run automatically, including Part 2's
+   013–027 agent tables).
+2. `npm run dev:web`, log in, open an engagement, add scope + target, start
+   the engagement, then use the **agent** tab → *Start agent run*.
+3. With the default `mock` model providers the loop is fully exercised
+   mechanically but the leader emits non-JSON decisions; the run will
+   deterministically fail with `LEADER_DECISION_NOT_JSON`-style rejections
+   (recorded as REJECTED decision cycles). That is the honest behaviour of a
+   provider that is not a real model — set `STRATEGIC_MODEL_PROVIDER=google`
+   (and `TACTICAL_MODEL_PROVIDER=google`) plus `GOOGLE_API_KEY` for real
+   reasoning.
+4. The mock providers can be scripted for deterministic simulations — see
+   `tests/integration/agent-helpers.ts` (`createAgentTestContext`).
+
+## Testing the agent OS
+
+* Unit: state machines, priority scoring, fingerprints, quota, retry
+  classification, policy, prompts, hypothesis transitions.
+* Integration: the full §72 pipeline, the §73 autonomous simulation, §74
+  quota simulations, §75 failure simulations, §63-§65 recovery, and the
+  agent HTTP API.
+* Security: prompt-injection labeling against REAL persisted agent messages,
+  scope-bypass attempts through the worker tool path, and secret isolation.
+* `npx tsx scripts/smoke.ts` exercises the agent endpoints end-to-end.
+
+## Environment knobs
+
+All agent tunables are documented in `.env.example` (`AGENT_*`): loop bounds,
+worker limits, quota (RPM/TPM/RPD), per-purpose token budgets, and
+engagement resource budget defaults.

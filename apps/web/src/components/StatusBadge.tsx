@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import type { EngagementStatus } from '@aegis/shared';
 
-const STATUS_CLASS: Record<EngagementStatus, string> = {
+/** Badge palette — Part 1 engagement statuses plus Part 2 agent statuses. */
+const STATUS_CLASS: Record<string, string> = {
   DRAFT: 'badge-gray',
   READY: 'badge-yellow',
   RUNNING: 'badge-green',
@@ -9,9 +9,28 @@ const STATUS_CLASS: Record<EngagementStatus, string> = {
   COMPLETED: 'badge-purple',
   FAILED: 'badge-red',
   CANCELLED: 'badge-gray',
+  // Agent OS statuses (Part 2).
+  CREATED: 'badge-gray',
+  INITIALIZING: 'badge-yellow',
+  WAITING: 'badge-yellow',
+  QUEUED: 'badge-yellow',
+  PARTIAL: 'badge-purple',
+  EXPIRED: 'badge-gray',
+  RECOVERY_PENDING: 'badge-red',
+  PROPOSED: 'badge-gray',
+  ACTIVE: 'badge-green',
+  TESTING: 'badge-yellow',
+  SUPPORTED: 'badge-green',
+  CONFIRMED: 'badge-purple',
+  DISPROVED: 'badge-red',
+  ABANDONED: 'badge-gray',
+  BLOCKED: 'badge-red',
+  NEEDS_CONTEXT: 'badge-yellow',
+  NEEDS_TOOL: 'badge-yellow',
+  NEEDS_IDENTITY: 'badge-yellow',
 };
 
-export function StatusBadge({ status }: { status: EngagementStatus }): ReactNode {
+export function StatusBadge({ status }: { status: string }): ReactNode {
   return <span className={`badge ${STATUS_CLASS[status] ?? 'badge-gray'}`}>{status}</span>;
 }
 

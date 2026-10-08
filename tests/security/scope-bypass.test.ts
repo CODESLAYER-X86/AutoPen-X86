@@ -93,11 +93,15 @@ describe('model output cannot directly execute arbitrary actions (spec §1.3, §
   it('structured model output with a hallucinated tool dies at the gateway', async () => {
     const decision = validateAgentDecision({
       decision: 'CREATE_TASK',
-      reason: 'model wants to execute a shell',
-      priority: 0.9,
-      task_type: 'SHELL_INJECTION',
+      reasoning_summary: 'model wants to execute a shell',
+      task: {
+        objective: 'Execute arbitrary commands on the target host.',
+        task_type: 'GENERAL_ANALYSIS',
+        allowed_tools: ['shell.exec'],
+      },
     });
-    // Even if downstream code attempted to honour the task_type as a tool...
+    // The decision schema accepts any syntactically valid tool NAME; the
+    // ToolGateway kills hallucinated names at the registry check.
     const result = await gateway.execute('shell.exec', { command: 'rm -rf /' }, {
       permissions: { network: false, browser: false, destructive: true },
     });
@@ -110,8 +114,8 @@ describe('model output cannot directly execute arbitrary actions (spec §1.3, §
     expect(() =>
       validateAgentDecision({
         decision: 'STOP',
-        reason: 'legit',
-        priority: 0.5,
+        reasoning_summary: 'legit',
+        objective_satisfied: true,
         ignore_previous_instructions: true,
         execute_tool: 'http.request',
         url: 'http://evil.com/',

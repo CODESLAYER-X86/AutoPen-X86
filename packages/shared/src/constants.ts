@@ -99,8 +99,206 @@ export const EVENT_TYPES = [
   'AGENT_ERROR',
   'TOOL_INVOKED',
   'TOOL_COMPLETED',
+  // Part 2 — Agent Operating System event vocabulary (spec Part 2 §59).
+  'AGENT_RUN_CREATED',
+  'AGENT_RUN_STARTED',
+  'AGENT_RUN_PAUSED',
+  'AGENT_RUN_RESUMED',
+  'AGENT_RUN_WAITING',
+  'AGENT_RUN_COMPLETED',
+  'AGENT_RUN_FAILED',
+  'AGENT_RUN_CANCELLED',
+  'AGENT_CYCLE_COMPLETED',
+  'LEADER_DECISION_RECORDED',
+  'LEADER_DECISION_REJECTED',
+  'TASK_QUEUED',
+  'TASK_DISPATCHED',
+  'TASK_RETRY',
+  'TASK_CANCELLED',
+  'TASK_RECOVERY_PENDING',
+  'TASK_BLOCKED',
+  'WORKER_STARTED',
+  'WORKER_COMPLETED',
+  'HYPOTHESIS_CONFIRMED',
+  'HYPOTHESIS_DISPROVED',
+  'HYPOTHESIS_ABANDONED',
+  'TEST_RECORDED',
+  'TEST_DUPLICATE',
+  'DEAD_END_RECORDED',
+  'STRATEGY_CHANGED',
+  'VERIFICATION_REQUESTED',
+  'FINDING_REJECTED',
+  'QUOTA_DELAY',
+  'QUOTA_EXHAUSTED',
+  'OSCILLATION_DETECTED',
+  'LOOP_PROTECTION_TRIGGERED',
+  'HUMAN_OVERRIDE',
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-export const PLATFORM_VERSION = '0.1.0-part1';
+// ---------------------------------------------------------------------------
+// Part 2 — Agent Operating System domain enums (spec Part 2 §2-§3, §9, §11,
+// §18, §22-23, §27, §47, §55, §59).
+// ---------------------------------------------------------------------------
+
+/** AgentRun lifecycle (Part 2 §3). */
+export const AGENT_RUN_STATUSES = [
+  'CREATED',
+  'INITIALIZING',
+  'RUNNING',
+  'PAUSED',
+  'WAITING',
+  'COMPLETED',
+  'FAILED',
+  'CANCELLED',
+] as const;
+export type AgentRunStatus = (typeof AGENT_RUN_STATUSES)[number];
+
+/** Task lifecycle (Part 2 §18) + RECOVERY_PENDING (Part 2 §64). */
+export const TASK_STATUSES = [
+  'CREATED',
+  'QUEUED',
+  'READY',
+  'RUNNING',
+  'WAITING',
+  'COMPLETED',
+  'PARTIAL',
+  'FAILED',
+  'CANCELLED',
+  'EXPIRED',
+  'RECOVERY_PENDING',
+] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+/** Logical worker specialisations (Part 2 §11) — one shared runtime. */
+export const WORKER_TYPES = [
+  'HTTP_WORKER',
+  'BROWSER_WORKER',
+  'SOURCE_WORKER',
+  'ANALYSIS_WORKER',
+] as const;
+export type WorkerType = (typeof WORKER_TYPES)[number];
+
+/**
+ * Strategic decision vocabulary (Part 2 §9). Exactly these nine — anything
+ * else in model output is rejected by schema validation.
+ */
+export const DECISION_TYPES = [
+  'CREATE_TASK',
+  'CREATE_PARALLEL_TASKS',
+  'UPDATE_HYPOTHESIS',
+  'REQUEST_KNOWLEDGE',
+  'REQUEST_RECON',
+  'REQUEST_VERIFICATION',
+  'WAIT',
+  'STOP',
+  'PAUSE',
+] as const;
+export type DecisionType = (typeof DECISION_TYPES)[number];
+
+/**
+ * Investigation task types (Part 2 §4/§13). Security methodology is a source
+ * of candidate tests, not a mandatory sequence (Part 2 §5) — this list is an
+ * open vocabulary, not a checklist algorithm.
+ */
+export const TASK_TYPES = [
+  'RECON',
+  'HTTP_ANALYSIS',
+  'BROWSER_INVESTIGATION',
+  'SOURCE_ANALYSIS',
+  'AUTHORIZATION_ANALYSIS',
+  'AUTHENTICATION_ANALYSIS',
+  'SESSION_ANALYSIS',
+  'INPUT_VALIDATION_ANALYSIS',
+  'CTF_CLUE_ANALYSIS',
+  'VERIFICATION',
+  'KNOWLEDGE_SUMMARY',
+  'GENERAL_ANALYSIS',
+] as const;
+export type TaskType = (typeof TASK_TYPES)[number];
+
+/** Worker result statuses (Part 2 §17). */
+export const WORKER_RESULT_STATUSES = [
+  'COMPLETED',
+  'PARTIAL',
+  'BLOCKED',
+  'FAILED',
+  'NEEDS_CONTEXT',
+  'NEEDS_TOOL',
+  'NEEDS_IDENTITY',
+] as const;
+export type WorkerResultStatus = (typeof WORKER_RESULT_STATUSES)[number];
+
+/** Hypothesis lifecycle (Part 2 §22). */
+export const HYPOTHESIS_STATUSES = [
+  'PROPOSED',
+  'ACTIVE',
+  'TESTING',
+  'SUPPORTED',
+  'CONFIRMED',
+  'DISPROVED',
+  'ABANDONED',
+] as const;
+export type HypothesisStatus = (typeof HYPOTHESIS_STATUSES)[number];
+
+/** Hypothesis taxonomy (Part 2 §23) — UNKNOWN is a first-class citizen (CTF). */
+export const HYPOTHESIS_TYPES = [
+  'AUTHENTICATION',
+  'AUTHORIZATION',
+  'INPUT_VALIDATION',
+  'INJECTION',
+  'CLIENT_SIDE',
+  'SERVER_SIDE',
+  'SESSION',
+  'BUSINESS_LOGIC',
+  'CONFIGURATION',
+  'DATA_EXPOSURE',
+  'CRYPTOGRAPHIC',
+  'RACE_CONDITION',
+  'CTF_CLUE',
+  'UNKNOWN',
+] as const;
+export type HypothesisType = (typeof HYPOTHESIS_TYPES)[number];
+
+/** Hypothesis confidence changes produced by workers (Part 2 §16). */
+export const HYPOTHESIS_CHANGES = [
+  'INCREASE_CONFIDENCE',
+  'DECREASE_CONFIDENCE',
+  'SUPPORT',
+  'CONTRADICT',
+  'CONFIRM',
+  'DISPROVE',
+  'ABANDON',
+] as const;
+export type HypothesisChange = (typeof HYPOTHESIS_CHANGES)[number];
+
+/** Test registry statuses (Part 2 §28). */
+export const TEST_STATUSES = [
+  'PENDING',
+  'RUNNING',
+  'COMPLETED',
+  'FAILED',
+  'DUPLICATE',
+] as const;
+export type TestStatus = (typeof TEST_STATUSES)[number];
+
+/** Finding promotion ladder (Part 2 §55): hypothesis != finding. */
+export const FINDING_STATUSES = ['PROPOSED', 'CONFIRMED', 'REJECTED'] as const;
+export type FindingStatus = (typeof FINDING_STATUSES)[number];
+
+/** Separate token budgets (Part 2 §38). */
+export const TOKEN_PURPOSES = [
+  'leader',
+  'worker',
+  'knowledge',
+  'summarization',
+  'verification',
+] as const;
+export type TokenPurpose = (typeof TOKEN_PURPOSES)[number];
+
+/** AgentPolicy outcomes (Part 2 §67). */
+export const POLICY_OUTCOMES = ['ALLOW', 'DENY', 'REQUIRE_USER_APPROVAL'] as const;
+export type PolicyOutcome = (typeof POLICY_OUTCOMES)[number];
+
+export const PLATFORM_VERSION = '0.2.0-part2';
 export const PLATFORM_NAME = 'Aegis Platform';

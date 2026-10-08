@@ -16,6 +16,7 @@
     { "path": "services/target-http" },
     { "path": "services/browser" },
     { "path": "services/worker-runtime" },
+    { "path": "services/agent" },
     { "path": "services/knowledge" },
     { "path": "apps/api" }
   ]
