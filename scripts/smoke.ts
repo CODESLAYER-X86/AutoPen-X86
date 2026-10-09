@@ -609,6 +609,121 @@ check(
   r,
 );
 
+// ---------------------------------------------------------------------------
+// Part 6: autonomous pentest & CTF engine (spec Part 6 §72, §6, §48, §52).
+// ---------------------------------------------------------------------------
+console.log('== part 6: autonomous engine ==');
+
+r = await call('GET', '/api/benchmarks');
+check(
+  'benchmark definitions exposed (§79)',
+  r.status === 200 && ((r.json as { items?: Array<{ name: string }> })?.items ?? []).length >= 5,
+  r,
+);
+
+// The autonomous engine is model-free in its deterministic layers; smoke
+// checks exercise the persisted state + read models. A live engagement is
+// required — reuse a CTF-mode engagement so the engine path is complete.
+r = await call('POST', '/api/projects', { name: 'Smoke Part6', description: 'autonomous engine smoke' });
+const smokeProjectId = ((r.json as { id?: string })?.id ?? '');
+r = await call('POST', '/api/engagements', {
+  project_id: smokeProjectId,
+  name: 'Autonomous Smoke',
+  mode: 'CTF',
+  description: 'The server forgets, but the browser remembers. Look where pages keep their memories.',
+});
+const autonomousEngagementId = ((r.json as { id?: string })?.id ?? '');
+await call('POST', `/api/engagements/${autonomousEngagementId}/scope`, {
+  allowed_hosts: ['ctf.internal'],
+  allowed_ports: [8080],
+  allowed_schemes: ['http'],
+});
+await call('POST', `/api/engagements/${autonomousEngagementId}/targets`, {
+  type: 'APPLICATION',
+  value: 'http://ctf.internal:8080',
+  label: 'smoke target',
+});
+r = await call('POST', `/api/engagements/${autonomousEngagementId}/start`);
+check('engagement started for autonomous smoke', r.status === 200, r);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/autonomous/status`);
+check(
+  'engine status 501/404 before start (honest, §72)',
+  r.status === 501 || r.status === 404,
+  r,
+);
+
+// CTF context is loadable (§29) — the engine analyzes clues deterministically.
+r = await call('POST', `/api/engagements/${autonomousEngagementId}/ctf/context`, {
+  title: 'The Remembering Browser',
+  description: 'The server forgets, but the browser remembers. Somewhere the application keeps a piece of state that outlives the page.',
+  hints: ['client-side storage'],
+  flag_format: 'flag\\{[A-Za-z0-9_-]{4,128}\\}',
+});
+check('CTF context + deterministic clue analysis (§29-§30)', r.status === 200, r);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/ctf`);
+check(
+  'CTF clues + interpretations queryable (§4)',
+  r.status === 200 && ((r.json as { clues?: Array<{ interpretations: Array<{ concept: string }> }> })?.clues ?? []).length > 0,
+  r,
+);
+
+r = await call('POST', `/api/engagements/${autonomousEngagementId}/autonomous/start`);
+check(
+  'autonomous engine started (§73/§9)',
+  r.status === 202,
+  r,
+);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/autonomous/status`);
+const enginePhase = ((r.json as { engine?: { phase?: string } })?.engine?.phase ?? '');
+check(
+  'engine phase persisted in the DB (§6)',
+  r.status === 200 && ['RECON', 'MODELING', 'HYPOTHESIS_GENERATION', 'TESTING'].includes(enginePhase),
+  r,
+);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/timeline?limit=50`);
+check(
+  'live agent timeline renders the audit chain (§53)',
+  r.status === 200 && ((r.json as { timeline?: { entries?: unknown[] } })?.timeline?.entries ?? []).length > 0,
+  r,
+);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/graph`);
+check(
+  'attack-surface graph projection (§12-§13)',
+  r.status === 200 && ((r.json as { graph?: { nodes?: unknown[] } })?.graph?.nodes ?? []).length >= 0,
+  r,
+);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/coverage`);
+check(
+  'coverage model computed (§51)',
+  r.status === 200 && typeof ((r.json as { coverage?: { note?: string } })?.coverage?.note) === 'string',
+  r,
+);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/branches`);
+check('reasoning branches queryable (§65)', r.status === 200, r);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/tests`);
+check('experimental test registry (§60)', r.status === 200, r);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/approvals`);
+check('approval surface (§48)', r.status === 200, r);
+
+r = await call('POST', `/api/engagements/${autonomousEngagementId}/autonomous/cancel`);
+check('engine cancel (§73)', r.status === 200, r);
+
+r = await call('GET', `/api/engagements/${autonomousEngagementId}/autonomous/status`);
+check(
+  'terminal phase persisted after cancel (§6)',
+  r.status === 200 && ((r.json as { engine?: { phase?: string } })?.engine?.phase ?? '') === 'CANCELLED',
+  r,
+);
+
 if (failures > 0) {
   console.error(`\nSMOKE TEST FAILED: ${failures} failure(s)`);
   await state.app?.close();

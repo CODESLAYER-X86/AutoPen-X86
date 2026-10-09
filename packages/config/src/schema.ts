@@ -179,7 +179,11 @@ export const EnvSchema = z.object({
   AUTONOMOUS_STOP_MIN_TESTS: positiveInt.default(3),
   AUTONOMOUS_STOP_MIN_INFORMATION_GAIN: z.coerce.number().min(0).max(1).default(0.05),
   AUTONOMOUS_STOP_MAX_CONSECUTIVE_FAILURES: positiveInt.default(4),
-  AUTONOMOUS_FLAG_PATTERNS: z.string().min(1).default('flag\\{[^\\s]{4,128}\\},CTF\\{[^\\s]{4,128}\\},aegis\\{[^\\s]{4,128}\\}'),
+  AUTONOMOUS_FLAG_PATTERNS: z
+    .string()
+    .min(1)
+    // Semicolon-separated: regex bodies contain commas ({4,128} quantifier).
+    .default('flag\\{[A-Za-z0-9_-]{4,128}\\};CTF\\{[A-Za-z0-9_-]{4,128}\\};aegis\\{[A-Za-z0-9_-]{4,128}\\}'),
   AUTONOMOUS_BUDGET_RECON_SHARE: z.coerce.number().min(0.05).max(0.9).default(0.4),
   AUTONOMOUS_BUDGET_TESTING_SHARE: z.coerce.number().min(0.05).max(0.9).default(0.45),
   AUTONOMOUS_TIMELINE_LIMIT: positiveInt.default(200),

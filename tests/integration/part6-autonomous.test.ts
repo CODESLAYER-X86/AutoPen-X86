@@ -154,21 +154,30 @@ describe('autonomous pentest cycle (§6, §62, §88)', () => {
     const events = await stack.repos.events.listByEngagement(engagement.id, 200);
     expect(events.map((event) => event.type)).toContain('HYPOTHESIS_CANDIDATES_CONSUMED');
 
-    // §38: test candidates compiled through the same scheduler queue.
+    // §38: test candidates compiled through the same scheduler queue. Keep
+    // ticking (the phases advance one transition per tick) until candidate
+    // tasks exist and drain, or the guard exhausts.
     guard = 0;
-    while (guard < 20) {
+    let candidateTasksSeen = 0;
+    while (guard < 30) {
       guard += 1;
       await stack.engine.maintenanceTick(engagement.id);
+      await settleEngine(80);
       const pending = await stack.repos.tasks.listByEngagement(engagement.id, {
         statuses: ['QUEUED', 'READY', 'RUNNING', 'WAITING', 'RECOVERY_PENDING'],
         limit: 50,
       });
-      if (pending.length === 0) break;
+      candidateTasksSeen = (await sql<{ id: string }>(
+        pool,
+        `SELECT id FROM tasks WHERE inputs->>'mode' = 'TEST_CANDIDATE' AND engagement_id = $1`,
+        [engagement.id],
+      )).length;
       for (const task of pending) {
         await completeTask(stack.repos, task.id, 'COMPLETED');
       }
-      await settleEngine(80);
+      if (candidateTasksSeen > 0 && pending.length === 0 && guard > 4) break;
     }
+    expect(candidateTasksSeen).toBeGreaterThan(0);
 
     const compiledEvents = await stack.repos.events.listByEngagement(engagement.id, 300);
     expect(compiledEvents.map((event) => event.type)).toContain('TEST_CANDIDATES_COMPILED');
@@ -185,8 +194,9 @@ describe('autonomous pentest cycle (§6, §62, §88)', () => {
     expect(Array.isArray(candidateTask!.inputs.mutations)).toBe(true);
     expect(String(candidateTask!.inputs.instruction)).toContain('http.mutate');
 
-    // Timeline (§53): the audit chain renders.
-    const timeline = await stack.engine.timelineView(engagement.id, 100);
+    // Timeline (§53): the audit chain renders (full window — the earliest
+    // recon events are the start of the chain).
+    const timeline = await stack.engine.timelineView(engagement.id, 500);
     expect(timeline.entries.length).toBeGreaterThan(0);
     expect(timeline.entries.some((entry) => entry.type === 'RECON_PIPELINE_STARTED')).toBe(true);
     expect(timeline.entries.some((entry) => entry.type === 'HYPOTHESIS_CANDIDATES_CONSUMED')).toBe(true);
@@ -402,7 +412,11 @@ describe('crash recovery (§54-§55)', () => {
 
     // Read-only task: mark it a recon task (safe retry path).
     // State-changing: pretend it is a mutation test.
-    await sql(pool, `UPDATE tasks SET inputs = jsonb_set(inputs, '{mode}', '"TEST_CANDIDATE"'), inputs = jsonb_set(inputs, '{mutations}', '[{"location":"path","operation":"replace","value":"8"}]'::jsonb) WHERE id = $1`, [stateChanging.id]);
+    await sql(
+      pool,
+      `UPDATE tasks SET inputs = inputs || '{"mode":"TEST_CANDIDATE","mutations":[{"location":"path","operation":"replace","value":"8"}]}'::jsonb WHERE id = $1`,
+      [stateChanging.id],
+    );
 
     // Force the sweep through maintenance (§55).
     await stack.engine.maintenanceTick(engagement.id);
@@ -466,7 +480,7 @@ describe('human interventions (§48)', () => {
       statement: 'Object ownership may not be enforced server-side for note objects.',
       confidence: 0.6,
       priority: 0.4,
-      source: 'test',
+      source: 'system',
     });
     const ok = await stack.engine.prioritizeHypothesis(engagement.id, hypothesis.id, 'user signal');
     expect(ok).toBe(true);

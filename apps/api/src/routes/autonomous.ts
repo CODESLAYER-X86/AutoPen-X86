@@ -26,6 +26,26 @@ import {
 import { parseBody, parseQueryInt } from '../lib/validate.js';
 import { requireOwnedEngagement } from '../lib/ownership.js';
 
+/** Resolve an approval_id to its task id (task_id wins when both given). */
+async function resolveApprovalTarget(
+  c: import('../context.js').AppContext,
+  engagementId: string,
+  body: { task_id?: string; approval_id?: string },
+): Promise<string> {
+  if (body.task_id) return body.task_id;
+  if (body.approval_id) {
+    const approval = await c.repos.approvals.findByIdAndEngagement(body.approval_id, engagementId);
+    if (!approval) {
+      throw new ValidationError('Approval not found for this engagement', 'APPROVAL_NOT_FOUND');
+    }
+    if (!approval.task_id) {
+      throw new ValidationError('Approval has no task attached', 'APPROVAL_TASK_MISSING');
+    }
+    return approval.task_id;
+  }
+  throw new ValidationError('Provide task_id or approval_id', 'APPROVAL_TARGET_REQUIRED');
+}
+
 export async function autonomousRoutes(app: FastifyInstance): Promise<void> {
   const ctx = () => app.ctx;
 
@@ -337,10 +357,7 @@ export async function autonomousRoutes(app: FastifyInstance): Promise<void> {
     const { id } = request.params as { id: string };
     const body = parseBody(ApproveRequestSchema, request.body ?? {});
     const engagement = await requireOwnedEngagement(c, request.user.id, id);
-    const taskId = body.task_id ?? body.approval_id ?? null;
-    if (!taskId) {
-      throw new ValidationError('Provide task_id or approval_id to approve', 'APPROVAL_TARGET_REQUIRED');
-    }
+    const taskId = await resolveApprovalTarget(c, engagement.id, body);
     const ok = await engine().approveTask(engagement.id, taskId, request.user.id, body.reason);
     if (!ok) {
       throw new ValidationError('Task is not waiting for approval', 'TASK_NOT_WAITING');
@@ -355,10 +372,7 @@ export async function autonomousRoutes(app: FastifyInstance): Promise<void> {
     const body = parseBody(RejectRequestSchema, request.body ?? { reason: undefined });
     const approveBody = parseBody(ApproveRequestSchema, request.body ?? {});
     const engagement = await requireOwnedEngagement(c, request.user.id, id);
-    const taskId = approveBody.task_id ?? approveBody.approval_id ?? null;
-    if (!taskId) {
-      throw new ValidationError('Provide task_id or approval_id to reject', 'APPROVAL_TARGET_REQUIRED');
-    }
+    const taskId = await resolveApprovalTarget(c, engagement.id, approveBody);
     const ok = await engine().rejectTask(engagement.id, taskId, request.user.id, body.reason);
     if (!ok) {
       throw new ValidationError('Task not found for this engagement', 'TASK_NOT_FOUND');

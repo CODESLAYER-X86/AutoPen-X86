@@ -14,9 +14,11 @@ import { EvidenceTab } from './EvidenceTab.js';
 import { FindingsTab } from './FindingsTab.js';
 import { AgentTab } from './AgentTab.js';
 import { KnowledgeTab } from './KnowledgeTab.js';
+import { AutonomousTab } from './AutonomousTab.js';
 
 const TABS = [
   'overview',
+  'autonomous',
   'agent',
   'targets',
   'scope',
@@ -154,6 +156,9 @@ export function EngagementPage(): ReactNode {
       </div>
 
       {tab === 'overview' && <OverviewTab engagement={engagement} readiness={readiness} />}
+      {tab === 'autonomous' && (
+        <AutonomousTab engagementId={engagement.id} engagementStatus={status} mode={engagement.mode} />
+      )}
       {tab === 'agent' && (
         <AgentTab engagementId={engagement.id} engagementStatus={status} mode={engagement.mode} />
       )}

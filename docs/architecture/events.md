@@ -145,3 +145,32 @@ extractor fails (§110, §112).
 Knowledge events use the `global` engagement id when not engagement-bound.
 Retrieval auditing additionally persists `knowledge_queries` /
 `knowledge_results` rows with the full scoring dimensions (§85, §97-§98).
+
+# Part 6 — Autonomous engine events (spec Part 6 §8, §6, §25-26, §31, §41-42, §48-50, §55, §87)
+
+| Event | Meaning |
+|---|---|
+| `AUTONOMOUS_ENGINE_STARTED` | Engine started for an engagement (mode, reason) |
+| `AUTONOMOUS_PHASE_CHANGED` | Persisted phase transition (from, to, terminal) |
+| `AUTONOMOUS_ENGINE_PAUSED` / `_RESUMED` / `_STOPPED` | Control actions (§48, §73) |
+| `AUTONOMOUS_RECOVERY_COMPLETED` | Crash recovery recovered N tasks (§54) |
+| `RECON_PIPELINE_STARTED` / `RECON_TASK_PLANNED` / `RECON_PIPELINE_COMPLETED` | Deterministic recon pipeline (§9) |
+| `HYPOTHESIS_CANDIDATES_CONSUMED` | Candidate groups → hypotheses + branches (§14-§16) |
+| `TEST_CANDIDATES_COMPILED` | Planned tests compiled into worker tasks (§38) |
+| `REASONING_BRANCH_CREATED` / `_UPDATED` / `_PRUNED` | Branch lifecycle (§65-§66) |
+| `DIFFERENTIAL_AUTO_REQUESTED` | Auto differential after a test task (§19) |
+| `VERIFICATION_BRIDGE_APPLIED` | Verdict applied to hypothesis/finding (§26) |
+| `FINDING_CONFIDENCE_COMPUTED` | §28 confidence model attached (confidence, level) |
+| `STOP_CONDITION_MET` | A §50 stop condition matched (reason, detail) |
+| `BUDGET_THRESHOLD_EXCEEDED` | Budget above the 80% threshold (§42) |
+| `TASK_LEASE_EXPIRED` | Lease sweep applied recovery policies (§55) |
+| `APPROVAL_REQUESTED` / `APPROVAL_DECIDED` | Human approval flow (§48-§49) |
+| `CTF_CONTEXT_CREATED` / `CTF_CLUE_ANALYZED` | Challenge ingestion + clue interpretation (§29) |
+| `FLAG_CONDITION_HYPOTHESIZED` / `FLAG_DETECTED` / `CHALLENGE_SOLVED` | §31 success-condition evidence chain |
+| `COVERAGE_UPDATED` | Coverage model recomputed (§51) |
+| `REPLAN_REQUESTED` | Replanning trigger recorded (§75) |
+| `BENCHMARK_RUN_COMPLETED` | Evaluation run finished with metrics (§79) |
+
+The correlation chain decision → task → worker → tool call → observation →
+hypothesis → evidence → verification → finding stays connected through
+event payloads + trace ids (§85).

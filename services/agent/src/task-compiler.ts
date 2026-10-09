@@ -186,8 +186,14 @@ export class TaskCompiler {
       previousFailurePenalty: 0,
     }, this.opts.priorityWeights);
 
-    // Idempotency key (§65): decision id + task index.
-    const idempotencyKey = `${input.decisionId ?? 'engine'}:${index}`;
+    // Idempotency key (§65): decision id + task index. Engine-compiled
+    // batches (Part 6, decisionId null) get a UNIQUE random prefix — the DB
+    // decision_id stays null (FK-safe) while different batches (recon vs
+    // candidates vs replans) never collide; true duplicate TESTS are gated
+    // by the fingerprint registry (§40).
+    const idempotencyKey = input.decisionId
+      ? `${input.decisionId}:${index}`
+      : `engine-${generateId('TRC')}:${index}`;
 
     const task = await repos.tasks.create({
       engagementId: input.engagementId,

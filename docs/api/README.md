@@ -175,3 +175,32 @@ ownership. Worker-facing equivalents are the `knowledge.search`,
 `knowledge.similar_cases`, `knowledge.search_web` and `knowledge.fetch`
 tools (§33-§36) — live web tools require the `knowledgeWeb` permission
 (§84).
+
+# Part 6 — Autonomous engine routes (spec Part 6 §48, §52, §72)
+
+All routes are ownership-guarded; `501 AUTONOMOUS_ENGINE_DISABLED` when the
+feature is off (honest degradation).
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/engagements/:id/autonomous/start` | Start (or resume) the engine; compiles the §9 recon plan (202) |
+| POST | `/api/engagements/:id/autonomous/pause` | Pause → WAITING_FOR_USER |
+| POST | `/api/engagements/:id/autonomous/resume` | Resume from persisted state |
+| POST | `/api/engagements/:id/autonomous/cancel` | Cancel → CANCELLED |
+| POST | `/api/engagements/:id/autonomous/replan` | Trigger replanning (§64, §75) |
+| GET | `/api/engagements/:id/autonomous/status` | Phase + task/hypothesis/finding/verification summaries + budget + current run + CTF status |
+| GET | `/api/engagements/:id/graph` | Attack-surface graph projection (§12-§13) |
+| GET | `/api/engagements/:id/timeline?limit=` | Live agent timeline (§53) |
+| GET | `/api/engagements/:id/coverage` | Coverage model (§51) |
+| GET | `/api/engagements/:id/tests` | Experimental test registry (§60) |
+| GET | `/api/engagements/:id/branches` | Reasoning branches (§65) |
+| GET | `/api/engagements/:id/verification-queue` | SUPPORTED hypotheses awaiting verification (§26) |
+| GET | `/api/engagements/:id/approvals` | Approval records (§48) |
+| POST | `/api/engagements/:id/prioritize` | Raise a hypothesis priority (§48) |
+| POST | `/api/engagements/:id/approve` | Approve a WAITING task (task_id or approval_id) |
+| POST | `/api/engagements/:id/reject` | Reject a task/approval |
+| POST | `/api/engagements/:id/ctf/context` | Upsert challenge title/description/hints/flag_format (§29) |
+| POST | `/api/engagements/:id/ctf/clues` | Add a user clue + re-analyze (§48) |
+| GET | `/api/engagements/:id/ctf` | Context + clues + flag conditions |
+| GET | `/api/benchmarks` | Benchmark definitions (§79) |
+| GET | `/api/benchmarks/:name/runs` | Persisted benchmark runs with metrics |

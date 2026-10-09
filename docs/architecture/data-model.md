@@ -232,3 +232,29 @@ Lifecycles:
   provenance of both URLs is retained.
 * **Research task** (§71): PENDING → RUNNING → COMPLETED/FAILED; every
   outcome — including budget exhaustion — is persisted and published.
+
+# Part 6 — Autonomous engine tables
+
+| Table | Purpose | Lifecycle |
+|---|---|---|
+| `autonomous_engine_states` | Engine phase per engagement (§6) + mode, replan/cycle counters, waiting reason, stop reason, engine instance id | CREATED → INITIALIZING → RECON → MODELING → HYPOTHESIS_GENERATION → TESTING → ANALYSIS → VERIFICATION → REPLANNING → (loop); terminal COMPLETED/STOPPED/CANCELLED/FAILED; waiting WAITING_FOR_USER/RESOURCE/IDENTITY/QUOTA |
+| `reasoning_branches` | Reasoning branches (§65): origin (SIGNAL/CTF_CLUE), focus, hypothesis_ids, score, pruned_reason | ACTIVE → PAUSED/PRUNED/DISPROVED/COMPLETED (history preserved) |
+| `ctf_contexts` | Challenge title/description/hints + flag format + status (§29, §31) | UNSOLVED → PARTIAL/SOLVED |
+| `ctf_clues` | Extracted clues with deterministic interpretations (§29) | NEW → ANALYZED → INTERPRETED → CONSUMED/DEAD_END |
+| `flag_conditions` | Success-condition hypotheses + detection evidence (§31) | HYPOTHESIZED → SUPPORTED → DETECTED/REFUTED |
+| `engagement_approvals` | Human approval records for high-risk tasks (§48-§49) | pending (decision NULL) → APPROVED/REJECTED exactly once |
+| `benchmark_runs` | Evaluation framework runs with computed metrics (§79) | COMPLETED/SOLVED/STOPPED/FAILED |
+
+Part 6 also EXTENDS existing tables:
+
+- `tasks.lease_expires_at / leased_by / heartbeat_at` — DB-level lease
+  ownership (§55): a task is claimed by exactly one engine instance via a
+  conditional UPDATE; expired leases move to RECOVERY_PENDING (safe retry)
+  or FAILED (state-changing, never blindly repeated).
+- `tests.result / expected_signal / actual_signal / mutation` — the
+  experimental verdict vocabulary (§60): SUPPORTED / DISPROVED /
+  INCONCLUSIVE / BLOCKED / FAILED.
+- `findings` — category, confidence + confidence_level + confidence_reasons
+  (§28 — confidence is NOT severity), impact, remediation, verification_ids,
+  target_refs, affected_endpoints/identities, mode; statuses extended with
+  CANDIDATE/VERIFIED (§58: no VERIFIED without verification evidence).

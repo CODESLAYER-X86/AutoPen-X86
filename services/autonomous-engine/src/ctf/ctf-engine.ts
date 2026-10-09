@@ -142,10 +142,13 @@ export class CtfEngine {
           const hypothesis = await this.deps.hypothesisEngine.createHypothesis({
             engagementId,
             type: CTF_HYPOTHESIS_TYPE,
-            statement: `CTF clue interpretation (${clue.source}): the challenge secret relates to ${interpretation.concept}. Confidence from deterministic riddle analysis: ${interpretation.confidence.toFixed(2)}.`,
+            statement: `CTF clue interpretation (${clue.source}, clue ${clue.id}): the challenge secret relates to ${interpretation.concept}. Confidence from deterministic riddle analysis: ${interpretation.confidence.toFixed(2)}.`,
             confidence: interpretation.confidence,
             priority: interpretation.confidence,
-            source: `ctf-clue:${clue.id}`,
+            // Part 2 schema: source enum is leader/worker/human/system; the
+            // deterministic engine is 'system'. Lineage lives in the branch
+            // (origin=CTF_CLUE, origin_ref=clue id).
+            source: 'system',
           });
           const branch = await this.deps.branchManager.createBranch(engagementId, {
             origin: 'CTF_CLUE',

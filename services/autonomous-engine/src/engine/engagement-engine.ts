@@ -124,7 +124,7 @@ export class AutonomousEngine {
       branchManager: this.branches,
       maxPerCycle: opts.hypothesisLimit,
     });
-    this.planner = new TaskPlanner({ repos: this.repos, compiler: this.compiler, options: { batchLimit: opts.candidateBatch } });
+    this.planner = new TaskPlanner({ repos: this.repos, compiler: this.compiler, eventBus: this.eventBus, options: { batchLimit: opts.candidateBatch } });
     this.dispatcher = new WorkerDispatcher({ repos: this.repos, compiler: this.compiler, eventBus: this.eventBus });
     this.execution = new ExecutionController({ repos: this.repos }, { taskLeaseMs: opts.taskLeaseMs });
     this.retries = new RetryManager(this.repos, { maxRepeatsPerFingerprint: opts.stopMaxConsecutiveFailures });
@@ -202,6 +202,17 @@ export class AutonomousEngine {
     await this.lifecycle.force(engagement.id, 'RECON', { actorId, strategySummary: 'initial recon (§9)' });
 
     await this.publishEngineStarted(engagement.id, mode, reason ?? null);
+    // §86 audit trail: who started the engine, with what reason.
+    await this.repos.audit
+      .create({
+        actorUserId: actorId,
+        action: 'AUTONOMOUS_ENGINE_STARTED',
+        resource: 'engagement',
+        resourceId: engagement.id,
+        engagementId: engagement.id,
+        metadata: { mode, reason: reason ?? null },
+      })
+      .catch(() => undefined);
 
     // Launch the agent run FIRST (tasks reference the run id), then enqueue
     // the deterministic recon plan (§9).
@@ -337,6 +348,12 @@ export class AutonomousEngine {
       }
     }
 
+    // Phase advancement (deterministic rules, §6) — BEFORE the stop
+    // evaluation: the §7 loop observes -> models -> hypothesizes -> tests ->
+    // verifies -> replans, and only THEN asks whether to stop. Stopping
+    // before the candidates are consumed would discard pending reasoning.
+    await this.advancePhase(engagementId);
+
     // §50 stop evaluation.
     const coverage = await this.coverageEvaluator.evaluate(engagementId).catch(() => null);
     const decision = await this.stopEvaluator.evaluate(engagement, coverage);
@@ -345,9 +362,6 @@ export class AutonomousEngine {
       await this.finish(engagement, decision.reason === 'OBJECTIVE_COMPLETED' ? 'COMPLETED' : 'STOPPED', decision.reason!, decision.detail);
       return;
     }
-
-    // Phase advancement (deterministic rules).
-    await this.advancePhase(engagementId);
 
     // §1 persistent loop: if no agent run is active but work remains (or the
     // engine has not exhausted replans), relaunch the run.
@@ -384,10 +398,12 @@ export class AutonomousEngine {
 
     if (phase === 'MODELING') {
       // §14: consume hypothesis candidates -> hypotheses + branches.
+      // Consumed signals are ALWAYS marked (idempotent per group) — the
+      // phase advances when the candidate pipeline is drained.
       const groups = await this.reasoning.hypothesisCandidates(engagementId).catch(() => []);
       const result = await this.bridge.consumeCandidates(engagementId, groups);
+      await this.reasoning.markSignalsConsumed(result.signalIdsConsumed).catch(() => undefined);
       if (result.hypothesesCreated > 0 || groups.length === 0) {
-        await this.reasoning.markSignalsConsumed(result.signalIdsConsumed).catch(() => undefined);
         await this.lifecycle.transitionIf(engagementId, 'MODELING', 'HYPOTHESIS_GENERATION', {});
       }
       return;
@@ -600,7 +616,11 @@ export class AutonomousEngine {
 
   private async currentRunId(engagementId: string): Promise<string | null> {
     const active = await this.repos.agentRuns.findActiveByEngagement(engagementId);
-    return active?.id ?? null;
+    if (active) return active.id;
+    // Fall back to the LATEST run row: the launcher owns the run lifecycle;
+    // the engine only needs the run id to compile tasks against (§38).
+    const runs = await this.repos.agentRuns.listByEngagement(engagementId, 1);
+    return runs[0]?.id ?? null;
   }
 
   private async pendingTasks(engagementId: string): Promise<TaskRecord[]> {
@@ -639,6 +659,8 @@ export class AutonomousEngine {
     detail: string,
   ): Promise<void> {
     this.stopLoop(engagement.id);
+    // §50: the matching stop condition is always observable.
+    await this.stopEvaluator.publish(engagement.id, reason, detail).catch(() => undefined);
     await this.lifecycle.force(engagement.id, phase, { stopReason: reason });
     await this.publishEngineEvent(engagement.id, 'AUTONOMOUS_ENGINE_STOPPED', { phase, reason, detail });
     if (phase === 'COMPLETED') {

@@ -13,7 +13,9 @@
  * mutation engine (§20).
  */
 import type { Repositories, TaskRecord } from '@aegis/database';
-import type { TestCandidate, LeaderDecision, LeaderTaskSpec } from '@aegis/contracts';
+import type { TestCandidate, LeaderDecision, LeaderTaskSpec, PlatformEvent } from '@aegis/contracts';
+import type { EventBus } from '@aegis/events';
+import { generateId } from '@aegis/shared';
 import { TaskCompiler, type CompiledTask } from '@aegis/agent';
 import type { TaskType } from '@aegis/shared';
 
@@ -39,6 +41,7 @@ export interface TaskPlannerOptions {
 export interface TaskPlannerDeps {
   repos: Repositories;
   compiler: TaskCompiler;
+  eventBus: EventBus;
   options?: Partial<TaskPlannerOptions>;
 }
 
@@ -103,8 +106,26 @@ export class TaskPlanner {
     const compiled: CompiledTask[] = await this.deps.compiler.compile(decision, {
       engagementId,
       runId,
+      // Null decisionId: the compiler generates unique engine-batch
+      // idempotency keys (§65) and keeps tasks.decision_id null (FK-safe).
       decisionId: null,
     });
+    if (compiled.length > 0) {
+      const event: PlatformEvent = {
+        type: 'TEST_CANDIDATES_COMPILED',
+        engagement_id: engagementId,
+        trace_id: generateId('TRC'),
+        actor_id: null,
+        payload: {
+          count: compiled.length,
+          fingerprints: eligible.map((candidate) => candidate.fingerprint).slice(0, 8),
+          run_id: runId,
+        },
+        occurred_at: new Date().toISOString(),
+        dedup_key: `candidates-compiled:${engagementId}:${runId}:${compiled[0]!.task.id}`,
+      };
+      await this.deps.eventBus.publish(event).catch(() => undefined);
+    }
     return { tasks: compiled.map((c) => c.task), skipped };
   }
 

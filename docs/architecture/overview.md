@@ -415,3 +415,90 @@ Integration seams:
   `knowledge.search_web`, `knowledge.fetch` tools (§33-§36) behind the
   gateway — live web tools require the explicit `knowledgeWeb`
   permission and fail closed without it (§84).
+
+# Part 6 — Autonomous Pentest & CTF Engine
+
+The autonomous engine (`services/autonomous-engine`, package `@aegis/autonomous`)
+combines everything built in Parts 2–5 into one **persistent, restartable
+loop** (spec Part 6 §1, §7):
+
+```
+OBSERVE -> MODEL -> HYPOTHESIZE -> PRIORITIZE -> PLAN -> VALIDATE ->
+EXECUTE -> OBSERVE -> COMPARE -> VERIFY -> UPDATE -> REPLAN
+```
+
+The LLM never constructs an unrestricted network operation (§1): every task
+flows through the Part 2 compiler → scheduler → tool gateway, with scope,
+policy, quota and duplicate gates enforced at every layer (§47). The engine
+itself is **model-free** in its deterministic layers — candidates,
+differentials, verification verdicts and stop decisions are computed by
+code; the strategic model decides priorities through the validated Part 2
+decision path.
+
+## Module map (spec §5)
+
+```
+services/autonomous-engine/src/
+├── engine/          engagement-engine (§73 facade), lifecycle-manager (§6),
+│                    loop-controller (§8 event-driven), state-machine, ports
+├── reconnaissance/  recon-planner (§9), asset-discovery (§10 passive),
+│                    endpoint/parameter-discovery (§11 bounded active),
+│                    auth-discovery, workflow-discovery, technology-fingerprint
+├── reasoning/       hypothesis bridge (§14-§16), prioritizer (§17),
+│                    strategy engine (§32), branch manager (§65-§66),
+│                    anomaly analyzer (§24)
+├── planning/        task planner (§38 test candidates -> tasks),
+│                    dependency planner (§36-§37), cost estimator
+├── execution/       execution controller (§55 leases), worker dispatcher,
+│                    retry manager (§40), recovery manager (§55)
+├── analysis/        observation analyzer, differential engine (§18-§19),
+│                    dataflow (§23), state analyzer (§21-§22),
+│                    evidence correlator (§25)
+├── verification/    verifier (§26), confidence engine (§28),
+│                    false-positive filter (§27), reproduction engine
+├── ctf/             ctf-engine (§4), clue analyzer (§29), riddle engine,
+│                    flag-condition analyzer (§31), challenge memory (§34)
+├── stopping/        stop evaluator (§50), budget evaluator (§42),
+│                    coverage evaluator (§51)
+├── graph/           attack-surface graph projection (§12-§13)
+├── timeline/        live agent timeline (§53)
+└── eval/            benchmarks (§79) + benchmark runner (§84 metrics)
+```
+
+## Key properties
+
+- **Phases, not process memory** — engine state (`autonomous_engine_states`)
+  is persisted per engagement with optimistic-concurrency versioning (§6/§56).
+  A restart resumes from the DB (§54): incomplete tasks are recovered, the
+  loop re-enters at the persisted phase.
+- **Event-driven loop** (§8) — the loop controller subscribes to the event
+  bus (task completions, reasoning ingestion, hypothesis updates,
+  verifications) plus a bounded maintenance interval for time-based
+  transitions; all engine mutations serialize through one queue (§56).
+- **Deterministic recon bootstrap** (§9) — scope validation → passive
+  discovery → bounded active discovery (§11: reason/scope/gain/cost/risk on
+  every task) → session init → application mapping. Never vulnerability
+  testing before a baseline exists.
+- **Candidates → hypotheses → branches** (§14-§16, §65) — Part 4 signal
+  groups are consumed into hypotheses with COMPETING alternatives
+  preserved; branches group interpretations and are pruned, never deleted.
+- **Test candidates → tasks** (§38, §20) — Part 4 planned tests compile into
+  worker tasks through the SAME compiler path as leader decisions; workers
+  execute the structured mutation plan via `http.mutate`.
+- **Verification bridge** (§26, §58) — VERIFIED → hypothesis CONFIRM
+  (enforced viaVerification) → promoted finding enriched with the §28
+  confidence model; REFUTED → disproved + dead end + branch prune.
+  A finding can never be VERIFIED without verification evidence.
+- **CTF mode** (§4, §29-§31) — clues → deterministic riddle interpretation →
+  branches → flag conditions; a challenge only becomes SOLVED with
+  pattern-observed flag evidence, never because a vulnerability was found.
+- **Crash recovery with leases** (§55) — tasks are claimed via conditional
+  UPDATE (one owner at a time); expired leases are swept; state-changing
+  tasks are MARK_FAILED, never blindly retried.
+- **Stop conditions** (§50) — objective completed, no useful hypotheses,
+  budget exhausted, scope risk, repeated failure, diminishing returns —
+  all observable as `STOP_CONDITION_MET` events.
+- **Benchmarks** (§79-§84) — offline fixture benchmarks with known ground
+  truth (lab IDOR + negative control; four CTF challenge types) measuring
+  time-to-finding, false-positive rate, duplicate rate, per-finding
+  efficiency and CTF solve rate.

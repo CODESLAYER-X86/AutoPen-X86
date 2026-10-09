@@ -159,3 +159,17 @@ persisted outbound agent message for secret values and secret references.
 | K10 | **Exact-solution copying in CTF mode** | PATTERN_RETRIEVAL (default) expands the hypothesis space with concept candidates; EXACT_CASE_RETRIEVAL is a separate benchmark-only mode (§102, §124) |
 | K11 | **Knowledge subsystem as an attack surface** (admin sync, crawler endpoints, stored documents) | All routes require authentication; admin sync/fetch are audited; engagement-scoped queries require ownership; cross-engagement tool inputs refused (§118, §132) |
 | K12 | **Cache poisoning / index-version mixing** | Cache keys include the index generation (embedding model + chunker params) (§65); embedding model changes are explicit version activations with reindex (§95) |
+
+# Part 6 — autonomous engine threats & mitigations (spec Part 6 §68-§70, §82-§87)
+
+| Threat | Mitigation |
+|---|---|
+| Model output attempts to expand scope / alter credentials / override policy (§68) | The engine is model-free in its deterministic layers; scope/credentials/permissions live outside model control; every task passes the Part 2 compiler + gateway gates (§47) |
+| Prompt injection via CTF challenge text / clues (§70, §83) | Clues are UNTRUSTED data: interpretations come ONLY from the deterministic lexicon; injected instructions never become interpretations, tool calls or scope changes (verified by security tests) |
+| Malformed model decisions hallucinating tools or out-of-scope targets (§82) | Part 2 schema/semantic/scope validation rejects and audits; the engine never executes unvalidated output |
+| Double execution of the same task after a crash (§56) | DB-level task leases: a conditional UPDATE claims exactly one owner; expired leases → RECOVERY_PENDING or FAILED |
+| State-changing operations blindly repeated after a crash (§55) | Recovery policy: mutation tasks are MARK_FAILED, never retried without a materially different plan |
+| High-risk actions executed without human consent (§48-§49) | Deterministic policy returns REQUIRE_USER_APPROVAL → task WAITING + approval row; approvals decided exactly once; both decisions audited |
+| Uncontrolled active discovery / brute force (§11) | Bounded known-path validation with reason/scope/gain/cost/risk per task; rate limits at the HTTP engine |
+| Runaway autonomous loop (§40-§42, §50) | Anti-loop fingerprints, retry thresholds, budget thresholds with 80% warnings, replan budget, six stop conditions — all observable events |
+| Unauditable autonomous behavior (§86-§87) | Every phase transition, control action, approval and stop condition writes an audit row + event; the live timeline renders the full chain (§53) |

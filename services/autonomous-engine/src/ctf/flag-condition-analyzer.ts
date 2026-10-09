@@ -30,9 +30,10 @@ export class FlagConditionAnalyzer {
     private readonly deps: { repos: Repositories; eventBus: EventBus },
     flagPatternsCsv: string,
   ) {
-    // Default patterns: flag{...}, CTF{...}, aegis{...} — configurable (§31).
+    // Patterns are semicolon-separated (regex bodies contain commas, e.g.
+    // the {4,128} quantifier). Defaults: flag{...}, CTF{...}, aegis{...}.
     const sources = flagPatternsCsv
-      .split(',')
+      .split(';')
       .map((pattern) => pattern.trim())
       .filter((pattern) => pattern.length > 0);
     this.patterns = sources.map((source) => {
@@ -173,6 +174,16 @@ export class FlagConditionAnalyzer {
       }
     }
     await this.deps.repos.ctfContexts.markSolved(engagementId, detection.value, detection.evidenceIds[0] ?? null, 'SOLVED');
+    const detectedEvent: PlatformEvent = {
+      type: 'FLAG_DETECTED',
+      engagement_id: engagementId,
+      trace_id: generateId('TRC'),
+      actor_id: null,
+      payload: { where: detection.where, kinds: detection.kinds },
+      occurred_at: new Date().toISOString(),
+      dedup_key: `flag-detected:${engagementId}`,
+    };
+    await this.deps.eventBus.publish(detectedEvent).catch(() => undefined);
     const event: PlatformEvent = {
       type: 'CHALLENGE_SOLVED',
       engagement_id: engagementId,

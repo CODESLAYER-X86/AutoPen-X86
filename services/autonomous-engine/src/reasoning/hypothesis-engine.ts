@@ -60,6 +60,11 @@ export class HypothesisBridge {
    * Consume candidate groups from the reasoning engine (§16). Each group's
    * PRIMARY becomes the branch focus; competitors become SIBLING hypotheses
    * inside the same branch so distinguishing tests score highly (§17).
+   *
+   * Consumption is IDEMPOTENT per signal: the group's signals are marked
+   * CONSUMED by the CALLER on return — a group is never re-consumed, and a
+   * branch is only created when at least one hypothesis actually lands
+   * (budget-aware, §65 anti-explosion).
    */
   async consumeCandidates(
     engagementId: string,
@@ -76,18 +81,8 @@ export class HypothesisBridge {
     for (const group of groups) {
       if (budget <= 0) break;
       const all = [group.primary, ...group.competitors];
-
-      // Branch focus from the primary statement (bounded).
-      const branch = await this.deps.branchManager.createBranch(engagementId, {
-        origin: 'SIGNAL',
-        originRef: group.signalId,
-        focus: group.primary.statement.slice(0, 400),
-        metadata: {
-          signal_type: group.signalType,
-          distinguishing_tests: group.distinguishingTests.slice(0, 8),
-        },
-      });
-      result.branchesCreated += 1;
+      let branchId: string | null = null;
+      let createdForGroup = 0;
 
       for (const candidate of all) {
         if (budget <= 0) {
@@ -101,11 +96,30 @@ export class HypothesisBridge {
             statement: candidate.statement,
             confidence: candidate.initial_confidence,
             priority: candidate.priority,
-            source: `reasoning-signal:${group.signalId}`,
+            // Part 2 schema: source enum is leader/worker/human/system; the
+            // deterministic candidate bridge is 'system'. Lineage lives in
+            // the branch (origin=SIGNAL, origin_ref=signal id) + links.
+            source: 'system',
           });
-          await this.deps.branchManager.attachHypothesis(branch.id, hypothesis.id);
+          if (branchId === null) {
+            const branch = await this.deps.branchManager.createBranch(engagementId, {
+              origin: 'SIGNAL',
+              originRef: group.signalId,
+              focus: group.primary.statement.slice(0, 400),
+              hypothesisIds: [hypothesis.id],
+              metadata: {
+                signal_type: group.signalType,
+                distinguishing_tests: group.distinguishingTests.slice(0, 8),
+              },
+            });
+            branchId = branch.id;
+            result.branchesCreated += 1;
+          } else {
+            await this.deps.branchManager.attachHypothesis(branchId, hypothesis.id);
+          }
           await this.linkSignalEvidence(engagementId, group.signalId, hypothesis.id);
           budget -= 1;
+          createdForGroup += 1;
           if (candidate.competing) result.competitorsPreserved += 1;
         } catch {
           // Branch budget exceeded (Part 2 §22) or contention — the remaining
@@ -113,7 +127,11 @@ export class HypothesisBridge {
           break;
         }
       }
-      result.signalIdsConsumed.push(group.signalId);
+      // The group is consumed when its primary landed (or every candidate
+      // failed); skipped groups keep NEW status for a later cycle.
+      if (createdForGroup > 0 || budget <= 0) {
+        result.signalIdsConsumed.push(group.signalId);
+      }
     }
 
     if (result.hypothesesCreated >= 0 && (result.hypothesesCreated > 0 || result.branchesCreated > 0)) {

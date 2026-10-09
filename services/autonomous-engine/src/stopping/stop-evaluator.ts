@@ -59,7 +59,10 @@ export class StopEvaluator {
       }
     }
 
-    // 2. No useful hypotheses (§50) — only after recon produced a surface.
+    // 2. No useful hypotheses (§50) — only when the reasoning pipeline is
+    // EMPTY: no actionable hypotheses, no pending tasks AND no unconsumed
+    // candidate signals (otherwise the bridge has candidates left to turn
+    // into hypotheses, §14-§16).
     const actionable = await this.deps.repos.hypotheses.countActionable(engagement.id);
     const pendingTasks = await this.deps.repos.tasks.listByEngagement(engagement.id, {
       statuses: ['CREATED', 'QUEUED', 'READY', 'RUNNING', 'WAITING', 'RECOVERY_PENDING'],
@@ -67,11 +70,14 @@ export class StopEvaluator {
     });
     if (actionable === 0 && pendingTasks.length === 0) {
       const endpoints = await this.deps.repos.endpoints.listByEngagement(engagement.id, { limit: 1 });
-      if (endpoints.length > 0) {
+      const unconsumedSignals = await this.deps.repos.securitySignals
+        .listNew(engagement.id, 1)
+        .catch(() => []);
+      if (endpoints.length > 0 && unconsumedSignals.length === 0) {
         return {
           shouldStop: true,
           reason: 'NO_USEFUL_HYPOTHESES',
-          detail: 'no actionable hypotheses remain and no tasks pending (§50)',
+          detail: 'no actionable hypotheses remain, no tasks pending and no unconsumed signals (§50)',
         };
       }
     }

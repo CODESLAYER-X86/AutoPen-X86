@@ -14,6 +14,11 @@ implemented, built and tested.**
 **Part 5 of 8: the security knowledge & web research system — hybrid
 retrieval, curated sources, CTF case memory, bounded live research,
 provenance and prompt-injection isolation.**
+**Part 6 of 8: the autonomous pentest & CTF engine — a persistent,
+restartable loop (recon → model → hypothesize → test → verify → replan)
+with DB-leased task recovery, competing-hypothesis branches, verification
+bridging, CTF riddle reasoning with flag-condition evidence, stop
+conditions, human approvals and an offline benchmark suite.**
 extraction (endpoints/parameters/authorization matrix/objects/workflows/
 data flows), security signals, competing hypothesis candidates, test
 planning with information gain, semantic differential testing, skeptical
@@ -233,9 +238,9 @@ but decisions are rejected as non-JSON (honest mock behaviour); configure
 | Command | Purpose |
 |---|---|
 | `npm run typecheck` / `lint` / `build` | quality gates |
-| `npm run test` | all 575 tests (starts DB automatically) |
+| `npm run test` | all 640+ tests (starts DB automatically) |
 | `npm run test:unit / :integration / :security / :e2e` | individual suites |
-| `npx tsx scripts/smoke.ts` | 61-check end-to-end smoke test |
+| `npx tsx scripts/smoke.ts` | 77-check end-to-end smoke test |
 | `npm run db:start / stop / ensure / migrate / reset` | embedded PostgreSQL lifecycle |
 
 ## Docs
@@ -252,3 +257,49 @@ but decisions are rejected as non-JSON (honest mock behaviour); configure
 
 TypeScript (strict) · Fastify 4 · React 18 + Vite 5 · PostgreSQL (pg) ·
 zod contracts (shared FE/BE) · vitest · typescript-eslint 9
+
+
+## What Part 6 adds (real, runnable)
+
+* **Autonomous engine** (`services/autonomous-engine`, ~40 modules): the
+  §5 module map implemented as an event-driven, resumable loop — engine
+  phases persisted in `autonomous_engine_states` with optimistic
+  concurrency; a loop controller subscribing to the event bus with a
+  bounded maintenance fallback; a deterministic recon bootstrap (scope
+  validation → passive discovery → bounded active discovery → session
+  init → application mapping).
+* **Reasoning bridge**: Part 4 candidate groups consumed into hypotheses
+  with COMPETING alternatives preserved (§16) and reasoning branches
+  (§65: scored, budgeted, pruned-never-deleted); Part 4 planned tests
+  compiled into worker tasks through the SAME validated compiler path as
+  leader decisions (§38, §47) — the LLM never constructs an unrestricted
+  network operation.
+* **Verification bridge**: VERIFIED → hypothesis CONFIRM (viaVerification
+  enforced) → finding promoted and enriched with the §28 confidence model
+  (dimensions, level, reasons); REFUTED → disproved + dead end + branch
+  prune. Findings carry category/confidence/impact/remediation and
+  verification linkage — no VERIFIED without verification evidence.
+* **Crash recovery with DB leases** (§55-§56): tasks claimed via
+  conditional UPDATE (exactly one engine instance); lease expiry sweeps
+  with policy separation — read-only tasks retry, state-changing tasks
+  are failed, never blindly repeated.
+* **CTF mode** (§4, §29-§31): challenge ingestion, deterministic riddle
+  interpretation (lexicon — never treated as fact), knowledge-corroborated
+  branches, flag-condition hypotheses, pattern-based flag detection with
+  evidence; a challenge only becomes SOLVED on observed success-condition
+  evidence.
+* **Stop conditions + budgets + approvals** (§42, §48-§50): six stop
+  conditions with observable events; budget thresholds with 80% warnings;
+  human approval flow decided exactly once and audited.
+* **Observability** (§52-§53, §85-§86): engagement dashboard tab with
+  phase/branches/experimental registry/approvals/CTF context, and a live
+  agent timeline rendering the full audit chain; every control action
+  audited.
+* **Evaluation framework** (§79-§84): five offline benchmarks with known
+  ground truth (lab IDOR + workflow flaw + negative control; four CTF
+  challenge types) measuring time-to-finding, false-positive rate,
+  duplicate-test rate, per-finding request/token efficiency and CTF solve
+  rate.
+* 5 new migrations (062-066, 66 total) + task/test/finding column
+  extensions; 15+ API routes; ~70 new tests (unit + integration + security
+  + evaluation).

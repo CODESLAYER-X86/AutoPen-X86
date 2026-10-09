@@ -1,6 +1,6 @@
 {
   "name": "@aegis/web",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aegis/contracts": "0.5.0",
-    "@aegis/shared": "0.5.0",
+    "@aegis/contracts": "0.6.0",
+    "@aegis/shared": "0.6.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",

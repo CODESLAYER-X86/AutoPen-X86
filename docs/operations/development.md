@@ -234,3 +234,55 @@ npx vitest run --config vitest.unit.config.ts tests/unit/part5-knowledge.test.ts
 npx vitest run --config vitest.integration.config.ts tests/integration/part5-knowledge.test.ts  # 28 integration
 npx vitest run --config vitest.security.config.ts tests/security/part5-knowledge-security.test.ts  # 20 security
 ```
+
+# Part 6 — Autonomous engine operations
+
+## Feature flag
+
+`FEATURE_AUTONOMOUS_ENGINE` (default `true`). Requires
+`FEATURE_SECURITY_REASONING` (the loop is built on the Part 4 candidate and
+verification machinery). When off, all `/autonomous/*` routes return honest
+`501 AUTONOMOUS_ENGINE_DISABLED`.
+
+## Operating the engine
+
+1. Create an engagement (PENTEST or CTF), scope, targets; start it.
+2. CTF only: `POST /ctf/context` with the challenge text (title,
+   description, hints, flag_format) — the engine extracts clues and
+   interprets them deterministically (§29).
+3. `POST /autonomous/start` — the engine persists its state, recovers
+   incomplete tasks (§54), launches the agent run, compiles the §9 recon
+   plan, and enters RECON.
+4. Watch the dashboard (Autonomous tab): phase, branches, experimental
+   registry, approvals, live timeline (auto-refresh every 3s while running).
+5. Control: pause / resume / cancel / replan; approve or reject high-risk
+   tasks; prioritize hypotheses.
+
+## Tunables (`AUTONOMOUS_*`)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AUTONOMOUS_MAX_REPLANS` | 6 | Replan budget before a §50 stop |
+| `AUTONOMOUS_MAINTENANCE_INTERVAL_MS` | 2500 | Fallback tick cadence (§8) |
+| `AUTONOMOUS_RECON_MAX_TASKS` | 12 | Bounded §9 recon plan size |
+| `AUTONOMOUS_RECON_MAX_PATHS_PER_TARGET` | 8 | §11 known-path bound |
+| `AUTONOMOUS_CANDIDATE_BATCH` | 6 | §38 incremental candidate batch |
+| `AUTONOMOUS_BRANCH_LIMIT` | 8 | Active branch budget (§65) |
+| `AUTONOMOUS_HYPOTHESIS_LIMIT` | 12 | Hypotheses per consumption cycle |
+| `AUTONOMOUS_TASK_LEASE_MS` | 120000 | Task lease duration (§55) |
+| `AUTONOMOUS_LEASE_SWEEP_INTERVAL_MS` | 15000 | Lease sweep cadence |
+| `AUTONOMOUS_STOP_MIN_TESTS` | 3 | Diminishing-returns window (§50) |
+| `AUTONOMOUS_STOP_MAX_CONSECUTIVE_FAILURES` | 4 | Repeated-failure stop |
+| `AUTONOMOUS_FLAG_PATTERNS` | `flag\{[A-Za-z0-9_-]{4,128}\};...` | Semicolon-separated flag regexes (§31) |
+| `AUTONOMOUS_BUDGET_RECON_SHARE` / `_TESTING_SHARE` | 0.4 / 0.45 | §78 phase allocation |
+| `AUTONOMOUS_TIMELINE_LIMIT` | 200 | Timeline response bound |
+| `AUTONOMOUS_MAX_KNOWLEDGE_QUERY_REPEATS` | 2 | §40 knowledge anti-loop |
+
+## Benchmarks
+
+`tests/integration/part6-benchmark.test.ts` runs the offline benchmark set
+(lab IDOR pentest + four CTF challenges) and persists metrics
+(`benchmark_runs`): time to first/verified finding, false-positive rate,
+duplicate-test rate, coverage, requests/tokens per finding, CTF solve rate.
+`GET /api/benchmarks` lists definitions; `GET /api/benchmarks/:name/runs`
+shows history.
