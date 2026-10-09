@@ -14,3 +14,4 @@ export * from './http.js';
 export * from './browser.js';
 export * from './reasoning.js';
 export * from './knowledge.js';
+export * from './autonomous.js';

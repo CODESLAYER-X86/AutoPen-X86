@@ -190,6 +190,15 @@ export class StorageEntriesRepository {
     );
     return result.rows as Record<string, unknown>[];
   }
+
+  /** Part 6 §31: flag-condition scanning over captured client-side state. */
+  async listByEngagement(engagementId: string, limit = 200): Promise<Record<string, unknown>[]> {
+    const result = await this.pool.query(
+      'SELECT id, engagement_id, context_id, identity_id, origin, area, key, value_redacted, is_sensitive, secret_reference, created_at FROM storage_entries WHERE engagement_id = $1 ORDER BY created_at DESC LIMIT $2',
+      [engagementId, Math.min(Math.max(limit, 1), 500)],
+    );
+    return result.rows as Record<string, unknown>[];
+  }
 }
 
 // -- DOM snapshots (§32) -------------------------------------------------------------

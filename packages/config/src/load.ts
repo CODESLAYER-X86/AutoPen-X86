@@ -75,6 +75,7 @@ function toAppConfig(raw: EnvRaw, googleApiKeyConfigured: boolean): AppConfig {
       knowledgeSearch: raw.FEATURE_KNOWLEDGE_SEARCH,
       reporting: raw.FEATURE_REPORTING,
       securityReasoning: raw.FEATURE_SECURITY_REASONING,
+      autonomousEngine: raw.FEATURE_AUTONOMOUS_ENGINE,
     },
     reasoning: {
       maxGraphNodes: raw.REASONING_MAX_GRAPH_NODES,
@@ -156,6 +157,25 @@ function toAppConfig(raw: EnvRaw, googleApiKeyConfigured: boolean): AppConfig {
         maxNetworkRequests: raw.AGENT_ENGAGEMENT_MAX_NETWORK_REQUESTS ?? null,
         maxDurationSeconds: raw.AGENT_ENGAGEMENT_MAX_DURATION_SECONDS ?? null,
       },
+    },
+    autonomous: {
+      maxReplans: raw.AUTONOMOUS_MAX_REPLANS,
+      maintenanceIntervalMs: raw.AUTONOMOUS_MAINTENANCE_INTERVAL_MS,
+      reconMaxTasks: raw.AUTONOMOUS_RECON_MAX_TASKS,
+      reconMaxPathsPerTarget: raw.AUTONOMOUS_RECON_MAX_PATHS_PER_TARGET,
+      candidateBatch: raw.AUTONOMOUS_CANDIDATE_BATCH,
+      branchLimit: raw.AUTONOMOUS_BRANCH_LIMIT,
+      hypothesisLimit: raw.AUTONOMOUS_HYPOTHESIS_LIMIT,
+      taskLeaseMs: raw.AUTONOMOUS_TASK_LEASE_MS,
+      leaseSweepIntervalMs: raw.AUTONOMOUS_LEASE_SWEEP_INTERVAL_MS,
+      stopMinTests: raw.AUTONOMOUS_STOP_MIN_TESTS,
+      stopMinInformationGain: raw.AUTONOMOUS_STOP_MIN_INFORMATION_GAIN,
+      stopMaxConsecutiveFailures: raw.AUTONOMOUS_STOP_MAX_CONSECUTIVE_FAILURES,
+      flagPatterns: raw.AUTONOMOUS_FLAG_PATTERNS,
+      budgetReconShare: raw.AUTONOMOUS_BUDGET_RECON_SHARE,
+      budgetTestingShare: raw.AUTONOMOUS_BUDGET_TESTING_SHARE,
+      timelineLimit: raw.AUTONOMOUS_TIMELINE_LIMIT,
+      maxKnowledgeQueryRepeats: raw.AUTONOMOUS_MAX_KNOWLEDGE_QUERY_REPEATS,
     },
   };
 }

@@ -84,7 +84,9 @@ export class TaskCompiler {
     input: {
       engagementId: string;
       runId: string;
-      decisionId: string;
+      /** Part 6: deterministic engine compilations pass null (no leader
+       * decision record); tasks.decision_id is nullable by design. */
+      decisionId: string | null;
     },
   ): Promise<CompiledTask[]> {
     switch (decision.decision) {
@@ -147,7 +149,7 @@ export class TaskCompiler {
 
   private async compileOne(
     spec: LeaderTaskSpec,
-    input: { engagementId: string; runId: string; decisionId: string },
+    input: { engagementId: string; runId: string; decisionId: string | null },
     index: number,
   ): Promise<CompiledTask> {
 
@@ -185,7 +187,7 @@ export class TaskCompiler {
     }, this.opts.priorityWeights);
 
     // Idempotency key (§65): decision id + task index.
-    const idempotencyKey = `${input.decisionId}:${index}`;
+    const idempotencyKey = `${input.decisionId ?? 'engine'}:${index}`;
 
     const task = await repos.tasks.create({
       engagementId: input.engagementId,
@@ -263,7 +265,7 @@ export class TaskCompiler {
    */
   private async splitTask(
     task: TaskRecord,
-    input: { engagementId: string; runId: string; decisionId: string },
+    input: { engagementId: string; runId: string; decisionId: string | null },
     observations: ObservationRecord[],
   ): Promise<void> {
     const { repos } = this.deps;
@@ -283,7 +285,7 @@ export class TaskCompiler {
       allowedTools: [],
       constraints: this.opts.defaultConstraints,
       inputs: { continuation_of: task.id, observation_ids: carry.map((o) => o.id) },
-      idempotencyKey: `${input.decisionId}:split:${task.id}`,
+      idempotencyKey: `${input.decisionId ?? 'engine'}:split:${task.id}`,
     });
     await this.deps.eventBus.publish({
       type: 'TASK_CREATED',

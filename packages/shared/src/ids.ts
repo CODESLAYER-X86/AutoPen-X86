@@ -86,7 +86,15 @@ export type IdPrefix =
   | 'KRF' // extracted knowledge reference (CVE/CWE/OWASP link)
   | 'RSC' // research task
   | 'RSR' // research source (selected/fetched during research)
-  | 'KVR'; // knowledge index/embedding version marker
+  | 'KVR' // knowledge index/embedding version marker
+  // Part 6 prefixes (autonomous pentest & CTF engine).
+  | 'AEN' // autonomous engine state row (per engagement)
+  | 'BRN' // reasoning branch
+  | 'CLU' // CTF clue
+  | 'CTF' // CTF challenge context (per engagement)
+  | 'FLC' // flag condition
+  | 'APV' // human approval record
+  | 'BMK'; // benchmark run
 
 /** Matches `<PREFIX>_<16..32 base32 chars>` and is case sensitive. */
 export const ID_PATTERN = /^[A-Z]{2,6}_[A-Z2-7]{16,32}$/;

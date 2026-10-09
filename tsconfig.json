@@ -62,6 +62,9 @@
       "path": "services/knowledge"
     },
     {
+      "path": "services/autonomous-engine"
+    },
+    {
       "path": "apps/api"
     }
   ]

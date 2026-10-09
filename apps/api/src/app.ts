@@ -34,6 +34,7 @@ import { httpRoutes } from './routes/http.js';
 import { browserRoutes } from './routes/browser.js';
 import { reasoningRoutes } from './routes/reasoning.js';
 import { knowledgeRoutes } from './routes/knowledge.js';
+import { autonomousRoutes } from './routes/autonomous.js';
 
 export interface BuildAppOptions {
   config?: AppConfig;
@@ -101,10 +102,20 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     await authenticated.register(browserRoutes);
     await authenticated.register(reasoningRoutes);
     await authenticated.register(knowledgeRoutes);
+    await authenticated.register(autonomousRoutes);
   });
 
   // Part 3 §75: browser cleanup even on graceful shutdown paths.
   app.addHook('onClose', async () => {
+    // Part 6 §54: stop autonomous loops first — state is persisted, so a
+    // restart resumes from the database (never process memory).
+    if (ctx.autonomous) {
+      for (const state of await ctx.repos.autonomousStates
+        .listRunnable()
+        .catch(() => [])) {
+        ctx.autonomous.loopFor(state.engagement_id)?.stop(state.engagement_id);
+      }
+    }
     // Part 4 §109: stop the reasoning event subscription first so no new
     // derived writes race the shutdown.
     ctx.stopReasoning?.();

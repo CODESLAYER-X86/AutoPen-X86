@@ -72,6 +72,15 @@ import {
   ResearchTasksRepository,
   SecurityTechniquesRepository,
 } from './knowledge-flows.js';
+import {
+  AutonomousEngineStatesRepository,
+  BenchmarkRunsRepository,
+  CtfContextsRepository,
+  CtfCluesRepository,
+  EngagementApprovalsRepository,
+  FlagConditionsRepository,
+  ReasoningBranchesRepository,
+} from './autonomous.js';
 
 export interface Repositories {
   users: UsersRepository;
@@ -141,6 +150,14 @@ export interface Repositories {
   knowledgeResults: KnowledgeResultsRepository;
   researchTasks: ResearchTasksRepository;
   researchSources: ResearchSourcesRepository;
+  // Part 6 — autonomous engine repositories.
+  autonomousStates: AutonomousEngineStatesRepository;
+  branches: ReasoningBranchesRepository;
+  ctfContexts: CtfContextsRepository;
+  ctfClues: CtfCluesRepository;
+  flagConditions: FlagConditionsRepository;
+  approvals: EngagementApprovalsRepository;
+  benchmarkRuns: BenchmarkRunsRepository;
 }
 
 export function createRepositories(pool: Pool): Repositories {
@@ -208,6 +225,13 @@ export function createRepositories(pool: Pool): Repositories {
     knowledgeResults: new KnowledgeResultsRepository(pool),
     researchTasks: new ResearchTasksRepository(pool),
     researchSources: new ResearchSourcesRepository(pool),
+    autonomousStates: new AutonomousEngineStatesRepository(pool),
+    branches: new ReasoningBranchesRepository(pool),
+    ctfContexts: new CtfContextsRepository(pool),
+    ctfClues: new CtfCluesRepository(pool),
+    flagConditions: new FlagConditionsRepository(pool),
+    approvals: new EngagementApprovalsRepository(pool),
+    benchmarkRuns: new BenchmarkRunsRepository(pool),
   };
 }
 
@@ -282,4 +306,13 @@ export {
   ResearchSourcesRepository,
   ResearchTasksRepository,
   SecurityTechniquesRepository,
+};
+export {
+  AutonomousEngineStatesRepository,
+  BenchmarkRunsRepository,
+  CtfCluesRepository,
+  CtfContextsRepository,
+  EngagementApprovalsRepository,
+  FlagConditionsRepository,
+  ReasoningBranchesRepository,
 };

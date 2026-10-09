@@ -111,6 +111,15 @@ export class ModelCallsRepository implements RepoBase {
     };
   }
 
+  /** Part 6 §79: benchmark metrics over per-engagement model calls. */
+  async listByEngagement(engagementId: string, limit = 500): Promise<ModelCallRecord[]> {
+    const result = await this.pool.query(
+      `SELECT ${CALL_COLUMNS} FROM model_calls WHERE engagement_id = $1 ORDER BY created_at DESC LIMIT $2`,
+      [engagementId, Math.min(Math.max(limit, 1), 2000)],
+    );
+    return result.rows.map(mapCall);
+  }
+
   async totalCalls(engagementId: string): Promise<number> {
     const result = await this.pool.query<{ n: number }>(
       'SELECT count(*)::int AS n FROM model_calls WHERE engagement_id = $1',

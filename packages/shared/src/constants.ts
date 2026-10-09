@@ -190,6 +190,42 @@ export const EVENT_TYPES = [
   'KNOWLEDGE_DOCUMENT_INDEXED',
   'KNOWLEDGE_INGESTION_FAILED',
   'RESEARCH_COMPLETED',
+  // Part 6 — Autonomous Pentest & CTF Engine event vocabulary (spec Part 6
+  // §8, §6, §25-§26, §31, §41-§42, §48-§50, §55, §87). Every meaningful
+  // engine transition is observable; the chain decision -> task -> worker ->
+  // tool -> observation -> hypothesis -> evidence -> verification -> finding
+  // stays connected through correlation ids.
+  'AUTONOMOUS_ENGINE_STARTED',
+  'AUTONOMOUS_PHASE_CHANGED',
+  'AUTONOMOUS_ENGINE_PAUSED',
+  'AUTONOMOUS_ENGINE_RESUMED',
+  'AUTONOMOUS_ENGINE_STOPPED',
+  'AUTONOMOUS_RECOVERY_COMPLETED',
+  'RECON_PIPELINE_STARTED',
+  'RECON_TASK_PLANNED',
+  'RECON_PIPELINE_COMPLETED',
+  'HYPOTHESIS_CANDIDATES_CONSUMED',
+  'TEST_CANDIDATES_COMPILED',
+  'REASONING_BRANCH_CREATED',
+  'REASONING_BRANCH_UPDATED',
+  'REASONING_BRANCH_PRUNED',
+  'DIFFERENTIAL_AUTO_REQUESTED',
+  'VERIFICATION_BRIDGE_APPLIED',
+  'FINDING_CONFIDENCE_COMPUTED',
+  'STOP_CONDITION_MET',
+  'BUDGET_THRESHOLD_EXCEEDED',
+  'TASK_LEASE_EXPIRED',
+  'APPROVAL_REQUESTED',
+  'APPROVAL_DECIDED',
+  'CTF_CONTEXT_CREATED',
+  'CTF_CLUE_ANALYZED',
+  'CTF_INTERPRETATION_RECORDED',
+  'FLAG_CONDITION_HYPOTHESIZED',
+  'FLAG_DETECTED',
+  'CHALLENGE_SOLVED',
+  'COVERAGE_UPDATED',
+  'REPLAN_REQUESTED',
+  'BENCHMARK_RUN_COMPLETED',
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -340,8 +376,8 @@ export const TEST_STATUSES = [
 export type TestStatus = (typeof TEST_STATUSES)[number];
 
 /** Finding promotion ladder (Part 2 §55): hypothesis != finding. */
-export const FINDING_STATUSES = ['PROPOSED', 'CONFIRMED', 'REJECTED'] as const;
-export type FindingStatus = (typeof FINDING_STATUSES)[number];
+// FINDING_STATUSES / FindingStatus are declared with the Part 6 extension in
+// the Part 6 section below (PROPOSED/CONFIRMED/REJECTED + CANDIDATE/VERIFIED).
 
 /** Separate token budgets (Part 2 §38). */
 export const TOKEN_PURPOSES = [
@@ -544,7 +580,7 @@ export const SESSION_EXPIRATION_SIGNALS = [
 ] as const;
 export type SessionExpirationSignal = (typeof SESSION_EXPIRATION_SIGNALS)[number];
 
-export const PLATFORM_VERSION = '0.5.0-part5';
+export const PLATFORM_VERSION = '0.6.0-part6';
 export const PLATFORM_NAME = 'Aegis Platform';
 
 // ---------------------------------------------------------------------------
@@ -968,3 +1004,193 @@ export type CtfRetrievalMode = (typeof CTF_RETRIEVAL_MODES)[number];
 /** Reference identifier kinds extracted from documents (Part 5 §57/§76). */
 export const KNOWLEDGE_REFERENCE_KINDS = ['CVE', 'CWE', 'OWASP', 'RFC', 'OTHER'] as const;
 export type KnowledgeReferenceKind = (typeof KNOWLEDGE_REFERENCE_KINDS)[number];
+
+// ---------------------------------------------------------------------------
+// Part 6 — Autonomous Pentest & CTF Engine domain enums (spec Part 6 §2, §6,
+// §15, §21, §29-§31, §33, §39, §49-§51, §55, §59-§60, §65, §77, §79).
+// ---------------------------------------------------------------------------
+
+/**
+ * Autonomous engine phases (Part 6 §6). The engine-level state machine sits
+ * ABOVE the Part 2 agent-run state machine: phases describe WHAT the engine
+ * is doing strategically, agent runs describe HOW tasks execute. Phases are
+ * persisted in `autonomous_engine_states` (never process memory).
+ *
+ * Terminal: COMPLETED, STOPPED, CANCELLED, FAILED.
+ * Waiting: WAITING_FOR_USER / RESOURCE / IDENTITY / QUOTA.
+ */
+export const AUTONOMOUS_PHASES = [
+  'CREATED',
+  'INITIALIZING',
+  'RECON',
+  'MODELING',
+  'HYPOTHESIS_GENERATION',
+  'TESTING',
+  'ANALYSIS',
+  'VERIFICATION',
+  'REPLANNING',
+  'COMPLETED',
+  'STOPPED',
+  'CANCELLED',
+  'FAILED',
+  'WAITING_FOR_USER',
+  'WAITING_FOR_RESOURCE',
+  'WAITING_FOR_IDENTITY',
+  'WAITING_FOR_QUOTA',
+] as const;
+export type AutonomousPhase = (typeof AUTONOMOUS_PHASES)[number];
+
+/** Phases from which the engine may continue autonomously. */
+export const AUTONOMOUS_RUNNABLE_PHASES: readonly AutonomousPhase[] = [
+  'CREATED',
+  'INITIALIZING',
+  'RECON',
+  'MODELING',
+  'HYPOTHESIS_GENERATION',
+  'TESTING',
+  'ANALYSIS',
+  'VERIFICATION',
+  'REPLANNING',
+  'WAITING_FOR_USER',
+  'WAITING_FOR_RESOURCE',
+  'WAITING_FOR_IDENTITY',
+  'WAITING_FOR_QUOTA',
+];
+
+/** Terminal engine phases (§6). */
+export const AUTONOMOUS_TERMINAL_PHASES: readonly AutonomousPhase[] = [
+  'COMPLETED',
+  'STOPPED',
+  'CANCELLED',
+  'FAILED',
+];
+
+/**
+ * Reasoning branch lifecycle (Part 6 §65). Branches group hypotheses that
+ * share an interpretation; pruned branches are PRESERVED (never deleted).
+ */
+export const BRANCH_STATUSES = ['ACTIVE', 'PAUSED', 'PRUNED', 'DISPROVED', 'COMPLETED'] as const;
+export type BranchStatus = (typeof BRANCH_STATUSES)[number];
+
+/** Dead-end memory scope (Part 6 §39). */
+export const DEAD_END_SCOPES = ['ENGAGEMENT', 'APPLICATION', 'ENDPOINT', 'GLOBAL'] as const;
+export type DeadEndScope = (typeof DEAD_END_SCOPES)[number];
+
+/** Reconnaissance depth levels (Part 6 §77). */
+export const RECON_LEVELS = [0, 1, 2, 3, 4] as const;
+export type ReconLevel = (typeof RECON_LEVELS)[number];
+
+/** CTF challenge lifecycle (Part 6 §31). Separate from severity. */
+export const CTF_STATUSES = ['UNSOLVED', 'PARTIAL', 'SOLVED'] as const;
+export type CtfStatus = (typeof CTF_STATUSES)[number];
+
+/** Where a CTF clue came from (Part 6 §29). */
+export const CTF_CLUE_SOURCES = ['TITLE', 'DESCRIPTION', 'HINT', 'ARTIFACT', 'OBSERVATION', 'USER'] as const;
+export type CtfClueSource = (typeof CTF_CLUE_SOURCES)[number];
+
+/** CTF clue lifecycle. */
+export const CTF_CLUE_STATUSES = ['NEW', 'ANALYZED', 'INTERPRETED', 'CONSUMED', 'DEAD_END'] as const;
+export type CtfClueStatus = (typeof CTF_CLUE_STATUSES)[number];
+
+/** Flag-condition lifecycle (Part 6 §31): hypothesized -> detected -> solved. */
+export const FLAG_CONDITION_STATUSES = [
+  'HYPOTHESIZED',
+  'SUPPORTED',
+  'DETECTED',
+  'REFUTED',
+] as const;
+export type FlagConditionStatus = (typeof FLAG_CONDITION_STATUSES)[number];
+
+/** Flag-condition evidence kinds (Part 6 §31). */
+export const FLAG_EVIDENCE_KINDS = [
+  'FLAG_PATTERN_OBSERVED',
+  'SUCCESS_RESPONSE',
+  'EXPLICIT_SUCCESS_STATE',
+  'VALIDATED_FLAG_ARTIFACT',
+  'SERVER_CONFIRMED_COMPLETION',
+] as const;
+export type FlagEvidenceKind = (typeof FLAG_EVIDENCE_KINDS)[number];
+
+/** Experimental test verdicts (Part 6 §60). The test registry's experimental
+ * memory: SUPPORTED advances a hypothesis, DISPROVED records a dead end. */
+export const TEST_RESULT_OUTCOMES = [
+  'SUPPORTED',
+  'DISPROVED',
+  'INCONCLUSIVE',
+  'BLOCKED',
+  'FAILED',
+] as const;
+export type TestResultOutcome = (typeof TEST_RESULT_OUTCOMES)[number];
+
+/** Human approval decisions for high-risk actions (Part 6 §48-§49). */
+export const APPROVAL_DECISIONS = ['APPROVED', 'REJECTED'] as const;
+export type ApprovalDecision = (typeof APPROVAL_DECISIONS)[number];
+
+/** Stop condition reasons (Part 6 §50). */
+export const STOP_REASONS = [
+  'OBJECTIVE_COMPLETED',
+  'NO_USEFUL_HYPOTHESES',
+  'BUDGET_EXHAUSTED',
+  'SCOPE_VIOLATION_RISK',
+  'REPEATED_FAILURE',
+  'DIMINISHING_RETURNS',
+  'USER_STOP',
+] as const;
+export type StopReason = (typeof STOP_REASONS)[number];
+
+/** Replanning triggers (Part 6 §75). */
+export const REPLAN_TRIGGERS = [
+  'MAJOR_ENDPOINT_DISCOVERY',
+  'NEW_IDENTITY',
+  'NEW_AUTHENTICATION_BEHAVIOR',
+  'NEW_WORKFLOW',
+  'NEW_OBJECT_IDENTIFIER',
+  'STRONG_ANOMALY',
+  'HYPOTHESIS_CONFIRMED',
+  'HYPOTHESIS_DISPROVED',
+  'NEW_SOURCE_CODE',
+  'IMPORTANT_KNOWLEDGE_RESULT',
+  'BUDGET_THRESHOLD',
+  'REPEATED_FAILURE',
+  'VERIFICATION_RESULT',
+  'MANUAL',
+] as const;
+export type ReplanTrigger = (typeof REPLAN_TRIGGERS)[number];
+
+/** Operating modes of the autonomous engine (Part 6 §2). */
+export const AUTONOMOUS_MODES = ['RECON_MODE', 'PENTEST_MODE', 'CTF_MODE'] as const;
+export type AutonomousMode = (typeof AUTONOMOUS_MODES)[number];
+
+/** Engine action risk levels (Part 6 §49). Deterministic policy, never model
+ *  output. */
+export const ENGINE_RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
+export type EngineRiskLevel = (typeof ENGINE_RISK_LEVELS)[number];
+
+/** Recovery policies for expired task leases (Part 6 §55). Potentially
+ * state-changing operations are NEVER blindly retried. */
+export const RECOVERY_POLICIES = ['SAFE_RETRY', 'RESUME', 'MARK_FAILED', 'RECOMPILE'] as const;
+export type RecoveryPolicy = (typeof RECOVERY_POLICIES)[number];
+
+/** Extended finding lifecycle (Part 6 §58, replacing the Part 2 §55 enum):
+ * CANDIDATE findings require verification evidence before becoming VERIFIED.
+ * PROPOSED/CONFIRMED remain as the Part 2 promotion-ladder aliases written by
+ * hypothesis promotion. */
+export const FINDING_STATUSES = [
+  'PROPOSED',
+  'CONFIRMED',
+  'REJECTED',
+  'CANDIDATE',
+  'VERIFIED',
+] as const;
+export type FindingStatus = (typeof FINDING_STATUSES)[number];
+/** Finding confidence levels (Part 6 §28). Confidence is NOT severity. */
+export const CONFIDENCE_LEVELS = ['HIGH', 'MEDIUM', 'LOW'] as const;
+export type ConfidenceLevel = (typeof CONFIDENCE_LEVELS)[number];
+
+/** Finding categories (Part 6 §58). Aligned with hypothesis taxonomy. */
+export const FINDING_CATEGORIES = [
+  ...SECURITY_TAXONOMY,
+  'CTF_TECHNIQUE',
+  'UNKNOWN',
+] as const;
+export type FindingCategory = (typeof FINDING_CATEGORIES)[number];

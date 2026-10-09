@@ -33,6 +33,9 @@ import { classifyError } from './retry.js';
 export interface SchedulerOptions {
   maxConcurrentTasks: number;
   retryDelayMs: number;
+  /** Part 6 §55: lease owner identity + lease duration for claimed tasks. */
+  leaseOwner?: string;
+  taskLeaseMs?: number;
 }
 
 export const DEFAULT_SCHEDULER_OPTIONS: SchedulerOptions = {
@@ -202,10 +205,30 @@ export class TaskScheduler {
       return { task: (await repos.tasks.findById(task.id))!, workerStatus: null, normalized: null, retried: false };
     }
 
-    // RUNNING transition + attempt increment.
-    await this.transition(task, 'RUNNING');
-    await repos.tasks.incrementAttempts(task.id);
-    const running = (await repos.tasks.findById(task.id))!;
+    // RUNNING transition + attempt increment — Part 6 §55-§56: a DB-level
+    // claim. The conditional UPDATE atomically moves READY/QUEUED -> RUNNING,
+    // increments attempts and takes the lease. A second engine instance can
+    // never claim the same task; a null result means another writer won.
+    TaskStateMachine.assertTransition(task.status, 'RUNNING');
+    const claimed = await repos.tasks.claimForExecution(
+      task.id,
+      this.opts.leaseOwner ?? 'scheduler',
+      this.opts.taskLeaseMs ?? 120_000,
+    );
+    if (!claimed) {
+      // Another engine instance claimed it first — treat as no-op.
+      return { task: (await repos.tasks.findById(task.id))!, workerStatus: null, normalized: null, retried: false };
+    }
+    await this.deps.eventBus.publish({
+      type: 'TASK_STARTED',
+      engagement_id: task.engagement_id,
+      task_id: task.id,
+      trace_id: generateId('TRC'),
+      actor_id: null,
+      payload: {},
+      occurred_at: new Date().toISOString(),
+    });
+    const running = claimed;
 
     await this.deps.eventBus.publish({
       type: 'TASK_DISPATCHED',
@@ -379,6 +402,10 @@ export class TaskScheduler {
     if (task.status === to) return;
     TaskStateMachine.assertTransition(task.status, to);
     await this.deps.repos.tasks.updateStatus(task.id, to);
+    // Part 6 §55: terminal transitions release the lease.
+    if (TERMINAL_TASK_STATUSES.includes(to) || to === 'QUEUED' || to === 'WAITING') {
+      await this.deps.repos.tasks.releaseLease(task.id);
+    }
     // NOTE: failure codes are recorded by the CALLER (recordFailure) so the
     // specific worker error code is never overwritten by a generic one.
     // `reason` is only used for event payloads here.

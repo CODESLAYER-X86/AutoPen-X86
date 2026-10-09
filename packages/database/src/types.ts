@@ -46,6 +46,18 @@ import type {
   KnowledgeReferenceKind,
   ResearchMode,
   ResearchStatus,
+  // Part 6 — Autonomous Pentest & CTF Engine enums.
+  AutonomousPhase,
+  AutonomousMode,
+  BranchStatus,
+  CtfStatus,
+  CtfClueSource,
+  CtfClueStatus,
+  FlagConditionStatus,
+  EngineRiskLevel,
+  ApprovalDecision,
+  TestResultOutcome,
+  ConfidenceLevel,
 } from '@aegis/shared';
 import type { Iso8601, JsonRecord } from '@aegis/shared';
 
@@ -296,6 +308,10 @@ export interface TaskRecord {
   updated_at: Iso8601;
   started_at: Iso8601 | null;
   completed_at: Iso8601 | null;
+  /** Part 6 §55: lease ownership of the executing engine instance. */
+  lease_expires_at: Iso8601 | null;
+  leased_by: string | null;
+  heartbeat_at: Iso8601 | null;
 }
 
 export interface TaskAttemptRecord {
@@ -331,6 +347,11 @@ export interface TestRecord {
   status: TestStatus;
   result_summary: string | null;
   created_at: Iso8601;
+  /** Part 6 §60: experimental verdict. */
+  result: TestResultOutcome | null;
+  expected_signal: string | null;
+  actual_signal: string | null;
+  mutation: JsonRecord | null;
 }
 
 export interface DeadEndRecord {
@@ -365,6 +386,18 @@ export interface FindingRecord {
   evidence_ids: string[];
   created_at: Iso8601;
   updated_at: Iso8601;
+  /** Part 6 §28/§58: confidence model (NOT severity) + rich linkage. */
+  category: string | null;
+  confidence: number | null;
+  confidence_level: ConfidenceLevel | null;
+  confidence_reasons: string[];
+  impact: string | null;
+  remediation: string | null;
+  verification_ids: string[];
+  target_refs: string[];
+  affected_endpoints: string[];
+  affected_identities: string[];
+  mode: string;
 }
 
 export interface AgentMessageRecord {
@@ -894,4 +927,120 @@ export interface KnowledgeVersionRecord {
   active: boolean;
   note: string | null;
   created_at: Iso8601;
+}
+
+// ---------------------------------------------------------------------------
+// Part 6 — Autonomous Pentest & CTF Engine records (spec Part 6 §6, §29-§31,
+// §48-§49, §58, §65, §79).
+// ---------------------------------------------------------------------------
+
+export interface AutonomousEngineStateRecord {
+  id: string;
+  engagement_id: string;
+  phase: AutonomousPhase;
+  mode: AutonomousMode;
+  waiting_reason: string | null;
+  strategy_summary: string | null;
+  replan_count: number;
+  cycle_count: number;
+  last_replan_trigger: string | null;
+  knowledge_query_repeats: number;
+  engine_instance_id: string | null;
+  stop_reason: string | null;
+  started_at: Iso8601 | null;
+  finished_at: Iso8601 | null;
+  last_transition_at: Iso8601;
+  created_at: Iso8601;
+  version: number;
+}
+
+export interface ReasoningBranchRecord {
+  id: string;
+  engagement_id: string;
+  parent_branch_id: string | null;
+  origin: string;
+  origin_ref: string | null;
+  focus: string;
+  hypothesis_ids: string[];
+  score: number;
+  status: BranchStatus;
+  pruned_reason: string | null;
+  metadata: JsonRecord;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface CtfContextRecord {
+  id: string;
+  engagement_id: string;
+  title: string;
+  description: string;
+  hints: string[];
+  flag_format: string | null;
+  status: CtfStatus;
+  flag_value: string | null;
+  flag_evidence_id: string | null;
+  solved_at: Iso8601 | null;
+  analysis: JsonRecord;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface CtfClueInterpretation {
+  concept: string;
+  confidence: number;
+  rationale: string;
+}
+
+export interface CtfClueRecord {
+  id: string;
+  engagement_id: string;
+  source: CtfClueSource;
+  text_content: string;
+  interpretations: CtfClueInterpretation[];
+  branch_id: string | null;
+  status: CtfClueStatus;
+  dead_end_reason: string | null;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface FlagConditionRecord {
+  id: string;
+  engagement_id: string;
+  hypothesis_id: string | null;
+  condition_description: string;
+  pattern: string | null;
+  evidence_ids: string[];
+  evidence_kinds: string[];
+  detected_value: string | null;
+  status: FlagConditionStatus;
+  detected_at: Iso8601 | null;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface EngagementApprovalRecord {
+  id: string;
+  engagement_id: string;
+  task_id: string | null;
+  risk: EngineRiskLevel;
+  action_summary: string;
+  requested_by: string;
+  decided_by: string | null;
+  decision: ApprovalDecision | null;
+  decided_reason: string | null;
+  metadata: JsonRecord;
+  created_at: Iso8601;
+  decided_at: Iso8601 | null;
+}
+
+export interface BenchmarkRunRecord {
+  id: string;
+  benchmark: string;
+  engagement_id: string;
+  outcome: 'COMPLETED' | 'SOLVED' | 'STOPPED' | 'FAILED';
+  metrics: JsonRecord;
+  started_at: Iso8601;
+  completed_at: Iso8601 | null;
 }

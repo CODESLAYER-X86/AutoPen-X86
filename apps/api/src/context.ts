@@ -27,6 +27,7 @@ import { createPart4Tools } from '@aegis/toolbox';
 import { createPart5Tools } from '@aegis/toolbox';
 import { SecurityReasoningEngine } from '@aegis/reasoning';
 import { KnowledgeEngine } from '@aegis/knowledge';
+import { AutonomousEngine } from '@aegis/autonomous';
 import { ConfigurationError, type ModelRole } from '@aegis/shared';
 import { AgentEngineRegistry } from './agent-engine.js';
 
@@ -55,6 +56,8 @@ export interface AppContext {
   stopReasoning: () => void;
   /** Part 5 — knowledge & web research engine (null when disabled). */
   knowledge: KnowledgeEngine | null;
+  /** Part 6 — autonomous pentest & CTF engine (null when disabled). */
+  autonomous: AutonomousEngine | null;
   /** Route-level audit trail (spec §30). */
   audit: (entry: {
     actorUserId: string | null;
@@ -294,6 +297,45 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     agentLauncher: agentEngines,
   });
 
+  // --- Part 6: autonomous pentest & CTF engine (§5, §73) -------------------
+  // Composes the deterministic reasoning + knowledge layers with the Agent
+  // OS loop. The engine is MODEL-FREE in its deterministic layers; every
+  // model call still flows through the Part 2 validated leader/worker path.
+  // Requires the reasoning engine (Part 4) — the autonomous loop is built
+  // on deterministic candidate/verification machinery.
+  const autonomousEngine: AutonomousEngine | null =
+    config.features.autonomousEngine && reasoningEngine
+      ? new AutonomousEngine({
+          repos,
+          eventBus,
+          logger,
+          config,
+          tools: toolRegistry,
+          reasoning: reasoningEngine,
+          knowledge: knowledgeEngine ?? undefined,
+          launcher: agentEngines,
+          // §73 EngagementController bridge: the ENGINE decides the outcome,
+          // the ORCHESTRATOR owns the lifecycle transition (§50).
+          completion: {
+            complete: async (engagementId, actorId, reason) => {
+              const engagement = await repos.engagements.findById(engagementId);
+              if (!engagement || engagement.status !== 'RUNNING') return;
+              await orchestratorWithAgent
+                .complete(engagement, actorId)
+                .catch(() => undefined);
+              void reason;
+            },
+            fail: async (engagementId, actorId, reason) => {
+              const engagement = await repos.engagements.findById(engagementId);
+              if (!engagement || engagement.status !== 'RUNNING') return;
+              await orchestratorWithAgent
+                .fail(engagement, actorId, reason)
+                .catch(() => undefined);
+            },
+          },
+        })
+      : null;
+
   return {
     config,
     logger,
@@ -315,6 +357,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     reasoning: reasoningEngine,
     stopReasoning,
     knowledge: knowledgeEngine,
+    autonomous: autonomousEngine,
     audit: async (entry) => {
       await repos.audit.create(entry);
     },

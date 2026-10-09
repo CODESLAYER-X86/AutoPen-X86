@@ -4,7 +4,7 @@ import type { TaskRecord } from '../types.js';
 import { requireIso, type RepoBase } from './util.js';
 
 const TASK_COLUMNS =
-  'id, engagement_id, run_id, decision_id, hypothesis_id, type, objective, worker_type, status, priority, expected_information_gain, depends_on, allowed_tools, constraints, inputs, result, attempts, max_attempts, failure_code, failure_reason, idempotency_key, created_at, updated_at, started_at, completed_at';
+  'id, engagement_id, run_id, decision_id, hypothesis_id, type, objective, worker_type, status, priority, expected_information_gain, depends_on, allowed_tools, constraints, inputs, result, attempts, max_attempts, failure_code, failure_reason, idempotency_key, created_at, updated_at, started_at, completed_at, lease_expires_at, leased_by, heartbeat_at';
 
 export interface CreateTaskInput {
   engagementId: string;
@@ -145,6 +145,72 @@ export class TasksRepository implements RepoBase {
     return result.rows[0] ? mapTask(result.rows[0]) : null;
   }
 
+  /**
+   * Part 6 §55-§56: claim a task for execution with a DB-level lease. The
+   * conditional update only succeeds while the task is still READY/QUEUED —
+   * a second engine instance can never claim the same task. Returns null when
+   * another writer claimed it first.
+   */
+  async claimForExecution(
+    id: string,
+    leasedBy: string,
+    leaseMs: number,
+  ): Promise<TaskRecord | null> {
+    const result = await this.pool.query(
+      `UPDATE tasks SET
+         status = 'RUNNING',
+         attempts = attempts + 1,
+         started_at = now(),
+         lease_expires_at = now() + ($3::text)::interval,
+         leased_by = $2,
+         heartbeat_at = now(),
+         updated_at = now()
+       WHERE id = $1 AND status IN ('READY', 'QUEUED')
+       RETURNING ${TASK_COLUMNS}`,
+      [id, leasedBy, `${Math.max(1, Math.round(leaseMs / 1000))} seconds`],
+    );
+    return result.rows[0] ? mapTask(result.rows[0]) : null;
+  }
+
+  /** Lease heartbeat (§55): extend the lease while the worker is alive. */
+  async heartbeat(id: string, leasedBy: string, leaseMs: number): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE tasks SET
+         lease_expires_at = now() + ($3::text)::interval,
+         heartbeat_at = now(),
+         updated_at = now()
+       WHERE id = $1 AND leased_by = $2 AND status = 'RUNNING'
+       RETURNING id`,
+      [id, leasedBy, `${Math.max(1, Math.round(leaseMs / 1000))} seconds`],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  /** Release the lease on terminal completion (§55). */
+  async releaseLease(id: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE tasks SET lease_expires_at = NULL, leased_by = NULL, updated_at = now()
+       WHERE id = $1`,
+      [id],
+    );
+  }
+
+  /** Tasks whose leases have expired (§55 recovery sweep). */
+  async findExpiredLeases(engagementId: string | null, limit = 20): Promise<TaskRecord[]> {
+    const params: unknown[] = [];
+    let filter = `status = 'RUNNING' AND lease_expires_at IS NOT NULL AND lease_expires_at < now()`;
+    if (engagementId) {
+      filter += ` AND engagement_id = $1`;
+      params.push(engagementId);
+    }
+    params.push(limit);
+    const result = await this.pool.query(
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE ${filter} ORDER BY lease_expires_at LIMIT $${params.length}`,
+      params,
+    );
+    return result.rows.map(mapTask);
+  }
+
   async listByEngagement(
     engagementId: string,
     options: { statuses?: readonly TaskStatus[]; limit?: number } = {},
@@ -244,6 +310,9 @@ type TaskRow = {
   updated_at: Date;
   started_at: Date | null;
   completed_at: Date | null;
+  lease_expires_at: Date | null;
+  leased_by: string | null;
+  heartbeat_at: Date | null;
 };
 
 export function mapTask(row: TaskRow): TaskRecord {
@@ -273,5 +342,8 @@ export function mapTask(row: TaskRow): TaskRecord {
     updated_at: requireIso(row.updated_at),
     started_at: row.started_at ? requireIso(row.started_at) : null,
     completed_at: row.completed_at ? requireIso(row.completed_at) : null,
+    lease_expires_at: row.lease_expires_at ? requireIso(row.lease_expires_at) : null,
+    leased_by: row.leased_by,
+    heartbeat_at: row.heartbeat_at ? requireIso(row.heartbeat_at) : null,
   };
 }

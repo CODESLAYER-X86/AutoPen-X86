@@ -20,14 +20,14 @@ describe('migration runner (spec §32, §38)', () => {
     const first = await runMigrations(pool, MIGRATIONS_DIR);
     expect(first.applied).toHaveLength(0);
     // Part 1 (12) + Part 2 (15) + Part 3 (13) migrations.
-    expect(first.skipped.length).toBe(61);
+    expect(first.skipped.length).toBe(66);
   });
 
   it('records hash-verified entries in platform_migrations', async () => {
     const result = await pool.query<{ name: string; sha256: string }>(
       'SELECT name, sha256 FROM platform_migrations ORDER BY name',
     );
-    expect(result.rows.length).toBe(61);
+    expect(result.rows.length).toBe(66);
     for (const row of result.rows) {
       expect(row.sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(row.name).toMatch(/^\d{3}_.*\.sql$/);

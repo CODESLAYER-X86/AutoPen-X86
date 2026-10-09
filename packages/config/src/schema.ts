@@ -159,6 +159,31 @@ export const EnvSchema = z.object({
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
     .default(false),
+
+  // --- Part 6: Autonomous Pentest & CTF Engine (spec Part 6 §5, §17, §40-§42,
+  // §48-§51, §55, §65-§66, §75, §77-§78) ---
+  FEATURE_AUTONOMOUS_ENGINE: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
+    // Part 6 implements the autonomous engine — enabled by default.
+    .default(true),
+  AUTONOMOUS_MAX_REPLANS: positiveInt.default(6),
+  AUTONOMOUS_MAINTENANCE_INTERVAL_MS: positiveInt.default(2500),
+  AUTONOMOUS_RECON_MAX_TASKS: positiveInt.default(12),
+  AUTONOMOUS_RECON_MAX_PATHS_PER_TARGET: positiveInt.default(8),
+  AUTONOMOUS_CANDIDATE_BATCH: positiveInt.default(6),
+  AUTONOMOUS_BRANCH_LIMIT: positiveInt.default(8),
+  AUTONOMOUS_HYPOTHESIS_LIMIT: positiveInt.default(12),
+  AUTONOMOUS_TASK_LEASE_MS: positiveInt.default(120_000),
+  AUTONOMOUS_LEASE_SWEEP_INTERVAL_MS: positiveInt.default(15_000),
+  AUTONOMOUS_STOP_MIN_TESTS: positiveInt.default(3),
+  AUTONOMOUS_STOP_MIN_INFORMATION_GAIN: z.coerce.number().min(0).max(1).default(0.05),
+  AUTONOMOUS_STOP_MAX_CONSECUTIVE_FAILURES: positiveInt.default(4),
+  AUTONOMOUS_FLAG_PATTERNS: z.string().min(1).default('flag\\{[^\\s]{4,128}\\},CTF\\{[^\\s]{4,128}\\},aegis\\{[^\\s]{4,128}\\}'),
+  AUTONOMOUS_BUDGET_RECON_SHARE: z.coerce.number().min(0.05).max(0.9).default(0.4),
+  AUTONOMOUS_BUDGET_TESTING_SHARE: z.coerce.number().min(0.05).max(0.9).default(0.45),
+  AUTONOMOUS_TIMELINE_LIMIT: positiveInt.default(200),
+  AUTONOMOUS_MAX_KNOWLEDGE_QUERY_REPEATS: positiveInt.default(2),
 });
 
 export type EnvRaw = z.infer<typeof EnvSchema>;
@@ -191,6 +216,7 @@ export interface AppConfig {
     knowledgeSearch: boolean;
     reporting: boolean;
     securityReasoning: boolean;
+    autonomousEngine: boolean;
   };
   /** Part 4: reasoning engine resource limits (spec §113). */
   reasoning: {
@@ -272,5 +298,25 @@ export interface AppConfig {
       maxNetworkRequests: number | null;
       maxDurationSeconds: number | null;
     };
+  };
+  /** Part 6: autonomous engine tunables (spec Part 6 §42, §55, §65, §78). */
+  autonomous: {
+    maxReplans: number;
+    maintenanceIntervalMs: number;
+    reconMaxTasks: number;
+    reconMaxPathsPerTarget: number;
+    candidateBatch: number;
+    branchLimit: number;
+    hypothesisLimit: number;
+    taskLeaseMs: number;
+    leaseSweepIntervalMs: number;
+    stopMinTests: number;
+    stopMinInformationGain: number;
+    stopMaxConsecutiveFailures: number;
+    flagPatterns: string;
+    budgetReconShare: number;
+    budgetTestingShare: number;
+    timelineLimit: number;
+    maxKnowledgeQueryRepeats: number;
   };
 }
