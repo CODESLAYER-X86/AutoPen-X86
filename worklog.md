@@ -285,3 +285,23 @@ Work Log:
 
 Stage Summary:
 - Part 8 complete and live on the remote. 716 tests green; typecheck/lint/build/smoke all passing; 76 migrations applied. All eight parts of the platform are now delivered.
+
+---
+Task ID: 9
+Agent: main (Super Z)
+Task: README instructions for agents to set up the platform with zero human interference
+
+Work Log:
+- Synced to remote HEAD 6843c72 (Part 8 delivery); normalized a 603-file file-mode artifact (100644->100755, zero content change) via core.fileMode=false; left the reappeared untracked bun.lock alone (npm/package-lock stays canonical per the earlier cleanup commit).
+- Proved the full cold-bootstrap path in this session and found + fixed three real clean-clone defects the README work surfaced:
+  1) root tsconfig.json was missing the services/production-hardening reference — tsc -b failed on @aegis/hardening imports without prebuilt dist (same class as the Part 7 verification-reporting fix). Added the reference; build:server now exits 0 on a clean tree.
+  2) packages/config schema used z.number() (not z.coerce) for HARDENING_API_KEY_TTL_HOURS / HARDENING_GRANT_TTL_MINUTES / HARDENING_BREAKER_DEFAULT_THRESHOLD — a fresh `cp .env.example .env` failed CONFIG_VALIDATION_FAILED (env-file values are strings). Fixed with z.coerce.number() + a regression unit test.
+  3) the on-disk .env had been externally replaced with a one-line `DATABASE_URL=file:...` value (rejected correctly by validation); restored from .env.example.
+- Environment rebuild: tsc -b, npx playwright-core install chromium (cache was missing the v1248 headless shell — 12 browser + 1 api integration failures resolved), db:ensure + db:migrate (76 applied).
+- Gates all green in the cold environment: typecheck 0, lint 0, build (server + web) 0, unit 425 (incl. new regression test), integration 193, security 97, e2e 2 — 717 total; SMOKE TEST PASSED (88 checks); production server boot verified via /api/health ok, /api/ready ready:true (postgresql healthy), /api/metrics 401 without token; server auto-migrates at startup (skipped:76).
+- README: new "Agent setup — zero-human bootstrap" section (agent contract incl. never-commit rules + do-not-weaken-security-invariants, prerequisite self-checks, 6-step bootstrap sequence with the required build:server ordering explained, 6 verification gates with exact success signals, symptom->cause->remedy table for every failure actually observed, serving commands, honest-behaviour list so agents do not 'fix' by-design outcomes, deterministic reset path). Quick start gained the missing build:server step; Commands table updated to 717 tests / 88-check smoke. docs/operations/development.md first-start fixed the same way and cross-references the agent section.
+- Committed 07108d4 (5 files, +154/-5) and pushed to origin main via one-time token URL; verified remote HEAD 07108d4 through the GitHub API.
+
+Stage Summary:
+- An autonomous agent can now bootstrap the platform from a clean clone with zero human input: npm install -> cp .env.example .env -> npm run build:server -> playwright-core install chromium -> db:ensure -> db:migrate -> test (717) -> smoke (88 checks) -> serve, with every failure mode documented and the only human-optional value being GOOGLE_API_KEY for real LLM reasoning.
+- Two latent clean-clone bugs fixed (tsconfig reference, env coercion) with a regression test; all gates re-verified green.
