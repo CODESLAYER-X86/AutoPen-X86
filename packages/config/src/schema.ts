@@ -63,14 +63,16 @@ export const EnvSchema = z.object({
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
     .default(false),
 
+  // Part 3: the HTTP + browser interaction tools are implemented — enabled
+  // by default; operators can still opt out per deployment.
   FEATURE_TOOLS_HTTP: z
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
-    .default(false),
+    .default(true),
   FEATURE_TOOLS_BROWSER: z
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
-    .default(false),
+    .default(true),
   FEATURE_KNOWLEDGE_SEARCH: z
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))

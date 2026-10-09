@@ -115,6 +115,10 @@ export interface SessionRecord {
   created_at: Iso8601;
   expires_at: Iso8601 | null;
   updated_at: Iso8601;
+  /** Part 3: why the session left ACTIVE (spec §27). */
+  status_reason: string | null;
+  /** Part 3: engagement scoping. */
+  engagement_id: string | null;
 }
 
 /** PLATFORM-side authentication session (UI/API login). */

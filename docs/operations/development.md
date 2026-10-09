@@ -112,3 +112,24 @@ code changes; `google` providers require `GOOGLE_API_KEY` in the environment.
 All agent tunables are documented in `.env.example` (`AGENT_*`): loop bounds,
 worker limits, quota (RPM/TPM/RPD), per-purpose token budgets, and
 engagement resource budget defaults.
+
+## Part 3 — running the interaction layer
+
+* **Playwright**: `services/browser` uses `playwright-core` with bundled
+  Chromium. Install browsers once per host:
+  `npx playwright-core install chromium` (downloads to `~/.cache/ms-playwright`).
+  Launch args include `--no-sandbox` for container environments.
+* **Feature flags**: `FEATURE_TOOLS_HTTP` / `FEATURE_TOOLS_BROWSER` (default
+  on since Part 3) toggle registration of the interaction tools at
+  composition time — the gateway then honestly reports TOOL_NOT_FOUND.
+* **Network policy**: dev/test uses the lab policy (loopback allowed for
+  fixture apps); production keeps the restrictive default. Scope must
+  explicitly allow the target host AND port.
+* **Session material**: register identity auth state via
+  `POST /api/engagements/:id/browser/contexts/:cid/promote-session` or the
+  session manager service; values go straight to the encrypted secret store.
+* **Tests**: unit (§82 pure logic), integration (real Chromium + real HTTP
+  against the local lab app in `tests/fixtures/labApp.ts`), security
+  (§82.4 fail-closed cases). `npm run db:ensure` must run first.
+* **HAR import**: `POST /api/engagements/:id/http/har-import` — entries are
+  scope-filtered at import and re-validated at replay.

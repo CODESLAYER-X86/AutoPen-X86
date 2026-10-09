@@ -10,3 +10,5 @@ export * from './evidence.js';
 export * from './tools.js';
 export * from './meta.js';
 export * from './agent.js';
+export * from './http.js';
+export * from './browser.js';

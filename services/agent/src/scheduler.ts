@@ -238,7 +238,9 @@ export class TaskScheduler {
       scope: AgentPolicy.scopeRules(input.scope),
       permissions: {
         network: input.scope !== null,
-        browser: false, // browser tools arrive in Part 4
+        // Part 3: browser tools are real; the gateway still enforces the
+        // BROWSER capability + scope per invocation (§69).
+        browser: input.scope !== null,
         destructive: input.scope?.destructive_actions_allowed ?? false,
       },
       toolGateway: this.deps.toolGateway,

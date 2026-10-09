@@ -50,8 +50,8 @@ export function DashboardPage(): ReactNode {
             <div className="card-title">Subsystem status (Part 1 foundation)</div>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.9 }}>
               <li>Engagement lifecycle &amp; deterministic scope enforcement — implemented</li>
-              <li>HTTP worker — {meta.data.features.tools_http ? 'enabled' : 'not implemented (Part 3)'}</li>
-              <li>Browser worker — {meta.data.features.tools_browser ? 'enabled' : 'not implemented (Part 4)'}</li>
+              <li>HTTP worker — {meta.data.features.tools_http ? 'enabled (Part 3 interaction layer)' : 'disabled by configuration'}</li>
+              <li>Browser worker — {meta.data.features.tools_browser ? 'enabled (Part 3 interaction layer)' : 'disabled by configuration'}</li>
               <li>Knowledge search — {meta.data.features.knowledge_search ? 'enabled' : 'not implemented (Part 5)'}</li>
               <li>Reporting — {meta.data.features.reporting ? 'enabled' : 'not implemented (Part 6+)'}</li>
               <li>

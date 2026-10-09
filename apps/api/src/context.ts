@@ -19,6 +19,10 @@ import { ToolGateway, ToolRegistry, createDefaultToolRegistry } from '@aegis/too
 import { EncryptedFileSecretStore, type SecretStore } from '@aegis/security';
 import { OrchestratorService } from '@aegis/orchestrator';
 import { EvidenceService, LocalFileSystemObjectStore, type ObjectStore } from '@aegis/evidence';
+import { HttpEngine, HttpTrafficRecorder, LAB_NETWORK_POLICY, DEFAULT_NETWORK_POLICY, type NetworkPolicy } from '@aegis/target-http';
+import { SessionManager } from '@aegis/session-manager';
+import { BrowserService, DEFAULT_LAUNCH_OPTIONS } from '@aegis/browser';
+import { createPart3Tools } from '@aegis/toolbox';
 import { ConfigurationError, type ModelRole } from '@aegis/shared';
 import { AgentEngineRegistry } from './agent-engine.js';
 
@@ -36,6 +40,11 @@ export interface AppContext {
   toolRegistry: ToolRegistry;
   toolGateway: ToolGateway;
   modelRouter: ModelRouter;
+  /** Part 3 — interaction layer. */
+  httpEngine: HttpEngine;
+  trafficRecorder: HttpTrafficRecorder;
+  sessionManager: SessionManager;
+  browserService: BrowserService;
   /** Route-level audit trail (spec §30). */
   audit: (entry: {
     actorUserId: string | null;
@@ -102,7 +111,88 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     },
   });
 
+  // --- Part 3: interaction layer composition -----------------------------
+  // Network policy: dev/test targets run on loopback (embedded fixture
+  // apps); production keeps the restrictive default (§50).
+  const networkPolicy: NetworkPolicy =
+    config.app.env === 'production' ? DEFAULT_NETWORK_POLICY : LAB_NETWORK_POLICY;
+
+  const httpEngine = new HttpEngine({
+    limits: {
+      maxResponseBytes: config.http.maxBodyBytes,
+      maxHtmlBytes: config.http.maxBodyBytes,
+      maxRequestBytes: config.http.maxBodyBytes,
+      timeoutMs: config.http.timeoutMs,
+    },
+    networkPolicy,
+  });
+
+  // Adapter: two repos (requests + responses) behind the recorder surface.
+  const trafficRepository = {
+    insertRequest: (input: Parameters<typeof repos.httpRequests.insert>[0]) => repos.httpRequests.insert(input),
+    insertResponse: (input: Parameters<typeof repos.httpResponses.insert>[0]) => repos.httpResponses.insert(input),
+    findRequestById: (id: string) => repos.httpRequests.findById(id),
+    listRequestsByEngagement: (engagementId: string, limit: number, offset: number) =>
+      repos.httpRequests.listByEngagement(engagementId, limit, offset),
+    countRequestsByEngagement: (engagementId: string) => repos.httpRequests.countByEngagement(engagementId),
+  };
+
+  const trafficRecorder = new HttpTrafficRecorder({
+    repository: trafficRepository,
+    evidence,
+    eventBus,
+  });
+
+  const sessionManager = new SessionManager({
+    sessions: repos.sessions,
+    workflows: repos.authWorkflows,
+    identities: repos.identities,
+    secretStore,
+    eventBus,
+  });
+
+  const browserService = new BrowserService({
+    contexts: repos.browserContexts,
+    pagesRepo: repos.browserPages,
+    events: repos.browserEvents,
+    cookies: repos.cookies,
+    storage: repos.storageEntries,
+    downloads: repos.downloads,
+    websockets: repos.websockets,
+    domSnapshots: repos.domSnapshots,
+    evidence,
+    recorder: trafficRecorder,
+    httpRepository: trafficRepository,
+    eventBus,
+    secretStore,
+    sessionManager,
+    launch: {
+      ...DEFAULT_LAUNCH_OPTIONS,
+      headless: true,
+      networkPolicy: {
+        allowLoopback: networkPolicy.allowLoopback,
+        allowPrivateNetworks: networkPolicy.allowPrivateNetworks,
+        allowedSchemes: networkPolicy.allowedSchemes,
+        maxRedirects: networkPolicy.maxRedirects,
+      },
+    },
+  });
+
   const toolRegistry = createDefaultToolRegistry();
+  if (config.features.toolsHttp || config.features.toolsBrowser) {
+    toolRegistry.registerAll(
+      createPart3Tools({
+        engine: httpEngine,
+        recorder: trafficRecorder,
+        browser: browserService,
+        sessionManager,
+        evidence,
+        objectStore,
+        repos,
+        eventBus,
+      }),
+    );
+  }
   const toolGateway = new ToolGateway(toolRegistry);
 
   const modelRouter = new ModelRouter({
@@ -145,6 +235,10 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     toolRegistry,
     toolGateway,
     modelRouter,
+    httpEngine,
+    trafficRecorder,
+    sessionManager,
+    browserService,
     audit: async (entry) => {
       await repos.audit.create(entry);
     },

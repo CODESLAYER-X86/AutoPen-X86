@@ -19,15 +19,15 @@ describe('migration runner (spec §32, §38)', () => {
   it('is idempotent: a second run skips everything', async () => {
     const first = await runMigrations(pool, MIGRATIONS_DIR);
     expect(first.applied).toHaveLength(0);
-    // Part 1 (12) + Part 2 (15) migrations.
-    expect(first.skipped.length).toBe(27);
+    // Part 1 (12) + Part 2 (15) + Part 3 (13) migrations.
+    expect(first.skipped.length).toBe(40);
   });
 
   it('records hash-verified entries in platform_migrations', async () => {
     const result = await pool.query<{ name: string; sha256: string }>(
       'SELECT name, sha256 FROM platform_migrations ORDER BY name',
     );
-    expect(result.rows.length).toBe(27);
+    expect(result.rows.length).toBe(40);
     for (const row of result.rows) {
       expect(row.sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(row.name).toMatch(/^\d{3}_.*\.sql$/);

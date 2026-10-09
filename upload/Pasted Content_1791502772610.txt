@@ -1,0 +1,2140 @@
+# Autonomous Web Pentesting & CTF System
+
+## Implementation Specification — Part 3 of 8
+
+### Browser Automation, HTTP Engine, Proxy/Traffic Capture, Multi-Identity Sessions, WebSockets, Source Interaction, Tool Registry, and MCP Boundary
+
+---
+
+# 0. Purpose
+
+Implement the deterministic interaction layer between the autonomous agent system and authorized web targets.
+
+This phase provides:
+
+* browser automation
+* HTTP interaction
+* browser network observation
+* request/response capture
+* replay
+* controlled mutation
+* multi-identity sessions
+* cookies and browser storage
+* DOM inspection
+* JavaScript/resource discovery
+* WebSocket observation
+* screenshots
+* browser traces
+* downloads
+* HTTP normalization
+* traffic correlation
+* tool registry
+* policy enforcement at the tool boundary
+* MCP-compatible tool abstraction where useful
+
+This phase must remain deterministic.
+
+The LLM decides **what should be investigated**.
+
+The tool layer determines **how the operation is performed**.
+
+---
+
+# 1. Fundamental Architecture
+
+Implement:
+
+```text
+                         ORCHESTRATOR
+                              |
+                              v
+                         TASK SCHEDULER
+                              |
+                              v
+                        WORKER RUNTIME
+                              |
+                 +------------+------------+
+                 |            |            |
+                 v            v            v
+            HTTP WORKER  BROWSER WORKER  SOURCE WORKER
+                 |            |
+                 v            v
+             HTTP API     PLAYWRIGHT
+                 |            |
+                 |       Browser Context
+                 |            |
+                 +-----+------+ 
+                       |
+                       v
+                 TRAFFIC LAYER
+                       |
+             +---------+---------+
+             |                   |
+             v                   v
+        Request Store       Observation
+                             Pipeline
+             |                   |
+             +---------+---------+
+                       |
+                       v
+                  EVIDENCE STORE
+```
+
+---
+
+# 2. Browser Technology
+
+Use **Playwright** as the browser automation abstraction.
+
+Do not expose Playwright directly to the LLM.
+
+Create an internal browser service.
+
+Conceptually:
+
+```text
+Agent
+ ↓
+browser tool
+ ↓
+Browser Service
+ ↓
+Playwright
+ ↓
+Chromium/other supported browser
+```
+
+The browser service owns:
+
+* browser lifecycle
+* context lifecycle
+* page lifecycle
+* action execution
+* event capture
+* artifact capture
+* cleanup
+
+---
+
+# 3. Browser Isolation
+
+Every engagement must receive isolated browser resources.
+
+At minimum:
+
+```text
+Engagement
+    ↓
+BrowserSession
+    ↓
+BrowserContext
+    ↓
+Page(s)
+```
+
+Do not share cookies or localStorage between identities.
+
+Example:
+
+```text
+Context A → Anonymous
+Context B → User A
+Context C → User B
+Context D → Admin
+```
+
+These contexts must be independently disposable.
+
+---
+
+# 4. Identity-to-Browser Mapping
+
+Create a deterministic relationship:
+
+```text
+Identity
+   |
+   +---- BrowserContext
+   |
+   +---- HTTP Session
+```
+
+A worker should specify:
+
+```text
+identity_id = ID_A
+```
+
+rather than directly manipulating cookies.
+
+The session manager resolves the identity to its appropriate authenticated state.
+
+---
+
+# 5. Browser Context Lifecycle
+
+Implement:
+
+```text
+CREATE
+INITIALIZE
+READY
+ACTIVE
+PAUSED
+EXPIRED
+CLOSING
+CLOSED
+FAILED
+```
+
+Context cleanup must happen even if a worker crashes.
+
+Use `finally`-style resource cleanup.
+
+---
+
+# 6. Browser Profiles
+
+Do not use persistent browser profiles by default.
+
+Prefer isolated Playwright contexts.
+
+Persistent profiles should be an explicit feature.
+
+This prevents:
+
+* accidental credential reuse
+* cross-engagement contamination
+* stale cookies
+* state leakage
+
+---
+
+# 7. Browser Actions
+
+Create deterministic browser operations.
+
+Initial actions:
+
+```text
+browser.navigate
+browser.go_back
+browser.go_forward
+browser.reload
+
+browser.click
+browser.fill
+browser.select_option
+browser.check
+browser.uncheck
+
+browser.press
+browser.hover
+
+browser.wait_for
+browser.wait_for_url
+browser.wait_for_selector
+
+browser.screenshot
+browser.snapshot
+```
+
+Do not allow arbitrary JavaScript execution by default.
+
+If arbitrary script evaluation is later required, place it behind a separate high-risk capability.
+
+---
+
+# 8. Browser Action Schema
+
+Each action must be structured.
+
+Example:
+
+```json id="q9pzj7"
+{
+  "context_id": "CTX_01",
+  "action": "CLICK",
+  "selector": {
+    "strategy": "role",
+    "value": "button",
+    "name": "Login"
+  },
+  "timeout_ms": 5000
+}
+```
+
+Do not allow a worker to submit arbitrary JavaScript as a substitute for normal browser actions.
+
+---
+
+# 9. Selector Strategy
+
+Support deterministic selector strategies:
+
+```text id="plq1fr"
+role
+text
+label
+placeholder
+css
+xpath
+test_id
+```
+
+Prefer stable semantic selectors.
+
+The browser service should normalize selector errors.
+
+---
+
+# 10. Browser Observation
+
+Every significant browser action should produce structured observations.
+
+Example:
+
+```json id="y9wyxv"
+{
+  "event": "NAVIGATION",
+  "context_id": "CTX_01",
+  "url": "https://target.example/dashboard",
+  "timestamp": "...",
+  "title": "Dashboard"
+}
+```
+
+Do not store only natural-language descriptions.
+
+---
+
+# 11. Browser Event Stream
+
+Capture:
+
+```text id="j2n1cw"
+PAGE_CREATED
+PAGE_CLOSED
+
+NAVIGATION_STARTED
+NAVIGATION_COMPLETED
+
+CLICK
+INPUT
+FORM_SUBMIT
+
+DOM_CHANGE
+
+REQUEST_STARTED
+REQUEST_FINISHED
+REQUEST_FAILED
+
+RESPONSE_RECEIVED
+
+CONSOLE_MESSAGE
+PAGE_ERROR
+
+COOKIE_CHANGED
+STORAGE_CHANGED
+
+DOWNLOAD_STARTED
+DOWNLOAD_COMPLETED
+
+WEBSOCKET_CREATED
+WEBSOCKET_MESSAGE
+WEBSOCKET_CLOSED
+```
+
+Not every browser implementation will expose every event equally.
+
+Represent unsupported events explicitly rather than pretending they exist.
+
+---
+
+# 12. Network Capture
+
+Browser network traffic is one of the most important components.
+
+For each request capture, where available:
+
+```text id="w1l7ml"
+request_id
+context_id
+page_id
+timestamp
+method
+URL
+headers
+query_parameters
+post_data
+resource_type
+initiator
+```
+
+For each response:
+
+```text id="4x6h7j"
+request_id
+status
+headers
+content_type
+body_reference
+timing
+size
+```
+
+Large bodies should go to artifact storage.
+
+---
+
+# 13. Request Correlation
+
+Every browser request must receive a unique internal ID.
+
+Example:
+
+```text id="oy5c4r"
+Browser Event
+    |
+    v
+REQ_BROWSER_001
+    |
+    +── request
+    +── response
+    +── page
+    +── context
+    +── identity
+    +── task
+    +── evidence
+```
+
+This lets the system trace:
+
+```text
+user clicked button
+→ JavaScript executed
+→ API request occurred
+→ response returned
+→ DOM changed
+```
+
+---
+
+# 14. Browser-to-HTTP Relationship
+
+Browser and HTTP systems must share a common request representation.
+
+Do not create incompatible models.
+
+Create a normalized:
+
+```text id="h9plz3"
+HttpRequest
+HttpResponse
+```
+
+representation.
+
+Browser traffic can then be promoted into the HTTP testing subsystem.
+
+Example:
+
+```text id="3t2qws"
+Browser:
+POST /api/profile
+
+        ↓
+
+Captured request
+
+        ↓
+
+HTTP request record
+
+        ↓
+
+HTTP Worker
+
+        ↓
+
+Replay / controlled mutation
+```
+
+This is a core capability.
+
+---
+
+# 15. HTTP Engine
+
+Implement an independent HTTP client service.
+
+It should support:
+
+```text id="g2ct9a"
+GET
+POST
+PUT
+PATCH
+DELETE
+HEAD
+OPTIONS
+```
+
+Potentially other methods later.
+
+Use a mature HTTP implementation.
+
+Do not implement HTTP from raw TCP unless a specialized feature later requires it.
+
+---
+
+# 16. HTTP Request Representation
+
+Create a normalized request model:
+
+```text id="9v9r0m"
+HttpRequest
+-------------------------
+id
+engagement_id
+task_id
+identity_id
+method
+url
+headers
+query
+body
+body_type
+source
+parent_request_id
+timestamp
+```
+
+`source` can be:
+
+```text id="w4t3z1"
+BROWSER
+HTTP_WORKER
+IMPORTED
+REPLAY
+```
+
+---
+
+# 17. HTTP Response Representation
+
+Create:
+
+```text id="0sy42y"
+HttpResponse
+-------------------------
+id
+request_id
+status
+headers
+body_reference
+content_type
+content_length
+timing
+timestamp
+```
+
+Never assume every response is text.
+
+Support:
+
+```text id="q3njq8"
+JSON
+HTML
+XML
+plain text
+binary
+image
+file
+unknown
+```
+
+---
+
+# 18. HTTP Normalization
+
+Normalize requests before comparison.
+
+Examples:
+
+* header ordering
+* URL normalization
+* query ordering
+* JSON key ordering where appropriate
+* whitespace where appropriate
+
+Do not destroy semantically meaningful differences.
+
+Store both:
+
+```text id="1o5wfd"
+raw
+normalized
+```
+
+---
+
+# 19. HTTP Replay
+
+Create:
+
+```text id="w2fdby"
+http.replay
+```
+
+Input should reference an existing request whenever possible.
+
+Do not make the worker reconstruct the entire raw request manually.
+
+Example:
+
+```json id="opx4n0"
+{
+  "request_id": "REQ_123",
+  "identity_id": "IDENTITY_B"
+}
+```
+
+The session manager supplies appropriate authentication state.
+
+---
+
+# 20. Controlled Mutation
+
+Create:
+
+```text id="4n7uj1"
+http.mutate
+```
+
+Mutation must be structured.
+
+Examples:
+
+```text id="n0c7kg"
+change_query_parameter
+change_json_field
+change_header
+change_cookie_reference
+change_path_segment
+change_method
+change_form_field
+```
+
+Do not require the LLM to manually edit raw HTTP strings.
+
+---
+
+# 21. Mutation Object
+
+Example:
+
+```json id="c6n4t8"
+{
+  "base_request_id": "REQ_123",
+  "mutations": [
+    {
+      "location": "query",
+      "name": "user_id",
+      "operation": "replace",
+      "value": "382"
+    }
+  ]
+}
+```
+
+The mutation engine creates a new request.
+
+Original request remains immutable.
+
+---
+
+# 22. Mutation Safety
+
+Mutation must enforce:
+
+```text id="j5hy0x"
+scope
+request size
+allowed methods
+resource limits
+identity permissions
+engagement policy
+```
+
+A mutation cannot change the destination to an out-of-scope target.
+
+---
+
+# 23. Cookies
+
+Create a cookie abstraction.
+
+Track:
+
+```text id="a2t1hz"
+name
+domain
+path
+secure
+httpOnly
+sameSite
+expiration
+source
+identity_id
+context_id
+```
+
+Do not expose sensitive cookie values to the LLM unless necessary.
+
+Prefer:
+
+```text id="x8p3qs"
+COOKIE_REF_17
+```
+
+---
+
+# 24. Browser Storage
+
+Capture, where permitted:
+
+```text id="0dbp0j"
+localStorage
+sessionStorage
+```
+
+Associate storage with:
+
+```text identity
+context
+origin
+```
+
+Sensitive values should be redacted from logs and model context.
+
+---
+
+# 25. Authentication State
+
+The session manager should support:
+
+```text id="5x17jp"
+cookie-based sessions
+bearer tokens
+JWTs
+custom headers
+browser storage tokens
+```
+
+Do not assume all applications use cookies.
+
+---
+
+# 26. Authentication Injection
+
+When an HTTP request is executed as:
+
+```text
+identity_id = USER_A
+```
+
+the session manager applies the appropriate authentication material.
+
+The HTTP worker should not need to know the secret itself.
+
+---
+
+# 27. Session Expiration
+
+Detect:
+
+```text id="s9p2g8"
+expired session
+invalid token
+logout
+authentication redirect
+401
+403
+session reset
+```
+
+When detected, produce an observation.
+
+Do not automatically reauthenticate indefinitely.
+
+The leader should decide whether reauthentication is strategically useful.
+
+---
+
+# 28. Authentication Workflow Recording
+
+When a browser worker performs:
+
+```text id="k7p1yh"
+login
+→ MFA
+→ dashboard
+```
+
+record the workflow.
+
+The resulting session should become an identity-associated reusable session where policy permits.
+
+---
+
+# 29. Multiple Identity Comparison
+
+This is a core feature.
+
+The system must allow:
+
+```text id="0x1y1e"
+Identity A
+     |
+     +→ Request A
+     |
+Identity B
+     |
+     +→ Request B
+```
+
+Then the differential engine can compare them later.
+
+Do not let browser contexts share state.
+
+---
+
+# 30. Anonymous Context
+
+Always support an anonymous identity when technically possible.
+
+Example:
+
+```text id="b6k7xn"
+IDENTITY_ANONYMOUS
+```
+
+This is useful for:
+
+* public/private comparisons
+* access-control analysis
+* login behavior
+* exposed endpoints
+
+---
+
+# 31. Browser Reconnaissance
+
+The browser worker should be able to collect:
+
+```text id="2q2s4m"
+links
+forms
+inputs
+buttons
+navigation
+iframes
+scripts
+stylesheets
+images
+API traffic
+WebSockets
+downloads
+```
+
+Do not interpret all of this with an LLM immediately.
+
+Store structured observations first.
+
+---
+
+# 32. DOM Snapshot
+
+Create a normalized DOM snapshot representation.
+
+Include relevant:
+
+```text id="7qjv2y"
+element type
+text
+attributes
+form relationships
+input names
+input types
+links
+buttons
+ARIA labels
+```
+
+Avoid storing unnecessary duplicate DOM content.
+
+---
+
+# 33. DOM Change Detection
+
+When useful, compare snapshots:
+
+```text id="rjzv51"
+DOM before
+     ↓
+browser action
+     ↓
+DOM after
+     ↓
+DOM diff
+```
+
+This becomes evidence for workflow analysis.
+
+---
+
+# 34. JavaScript Discovery
+
+Capture loaded script resources.
+
+For each script:
+
+```text id="q5z8th"
+URL
+content_type
+size
+hash
+source_reference
+```
+
+Later, the source worker can analyze these.
+
+Do not automatically send every JavaScript file to an LLM.
+
+---
+
+# 35. Client-Side Route Discovery
+
+The system should eventually extract possible:
+
+```text id="l1b0qy"
+API paths
+routes
+URLs
+GraphQL endpoints
+WebSocket endpoints
+parameter names
+configuration values
+```
+
+Part 3 only needs the capture/storage interfaces.
+
+Analysis belongs to Part 4.
+
+---
+
+# 36. WebSockets
+
+Support WebSocket observation.
+
+Capture:
+
+```text id="x5fl8h"
+URL
+connection ID
+origin
+messages
+direction
+timestamp
+close code
+```
+
+Represent messages as:
+
+```text id="zyq2fz"
+CLIENT_TO_SERVER
+SERVER_TO_CLIENT
+```
+
+Large binary messages go to artifact storage.
+
+---
+
+# 37. Downloads
+
+Capture download events.
+
+Store:
+
+```text id="6xw8zv"
+URL
+filename
+content_type
+size
+sha256
+artifact_reference
+initiating_page
+```
+
+Downloaded content must be treated as untrusted.
+
+Do not automatically execute downloaded files.
+
+---
+
+# 38. Screenshots
+
+Screenshots should be linked to:
+
+```text id="mb3s4f"
+engagement
+task
+context
+page
+event
+timestamp
+```
+
+Store them as evidence artifacts.
+
+---
+
+# 39. Browser Traces
+
+Allow optional Playwright tracing.
+
+Trace generation should be configurable because traces can consume substantial storage.
+
+Use traces for:
+
+* debugging
+* evidence
+* reproducing browser workflows
+
+---
+
+# 40. Proxy Architecture
+
+Do not force all browser traffic through a proxy unless required.
+
+Create a proxy abstraction:
+
+```text id="y7v4i0"
+TrafficSource
+    ├── BrowserNative
+    ├── ExplicitProxy
+    └── ImportedTraffic
+```
+
+This keeps the system flexible.
+
+---
+
+# 41. Burp Compatibility
+
+Do NOT architect the system around Burp Suite.
+
+However, support importing/exporting standard formats where useful.
+
+Potential formats:
+
+```text id="b6o3op"
+HAR
+HTTP request/response
+```
+
+Later integrations can support additional proxy tooling.
+
+Burp is an optional integration, not the architectural center.
+
+---
+
+# 42. MCP Boundary
+
+If MCP is used, treat MCP as a **transport/interface mechanism**, not the internal architecture.
+
+The internal flow remains:
+
+```text id="a8xgzt"
+Agent
+ ↓
+Tool Registry
+ ↓
+Policy
+ ↓
+MCP Adapter (optional)
+ ↓
+Tool
+```
+
+Do not make the entire application dependent on MCP semantics.
+
+---
+
+# 43. Tool Registry
+
+Every tool must register:
+
+```text id="4h7vvp"
+tool_id
+name
+version
+description
+input_schema
+output_schema
+capabilities
+risk_level
+requires_scope
+requires_identity
+```
+
+Example:
+
+```text id="3v0c8k"
+http.replay
+http.mutate
+browser.navigate
+browser.click
+browser.snapshot
+browser.screenshot
+websocket.observe
+```
+
+---
+
+# 44. Tool Execution Contract
+
+Create:
+
+```text id="2r9l0j"
+ToolExecutionRequest
+```
+
+containing:
+
+```text id="yn2r8v"
+tool_id
+task_id
+engagement_id
+identity_id
+input
+deadline
+correlation_id
+```
+
+The tool runner performs:
+
+```text id="7j5d3f"
+validate
+ ↓
+policy
+ ↓
+scope
+ ↓
+resource
+ ↓
+execute
+ ↓
+normalize
+ ↓
+persist
+```
+
+---
+
+# 45. Tool Output Contract
+
+Create:
+
+```text id="p0n8fy"
+ToolExecutionResult
+```
+
+containing:
+
+```text id="0cqzvf"
+execution_id
+status
+observations
+artifacts
+metrics
+error
+```
+
+Tool output must not directly modify hypotheses.
+
+The observation pipeline handles that.
+
+---
+
+# 46. Tool Risk Classification
+
+Each tool must declare a risk level.
+
+Example:
+
+```text id="c7a0j1"
+browser.snapshot → LOW
+browser.navigate → LOW
+http.replay → LOW/MEDIUM
+http.mutate → MEDIUM
+file operations → configurable
+```
+
+The final classification should be configurable by policy.
+
+Do not hard-code one universal risk judgment.
+
+---
+
+# 47. Tool Timeouts
+
+Every tool execution must have a deadline.
+
+Browser and HTTP operations must never hang indefinitely.
+
+Use:
+
+```text id="n5d6is"
+task timeout
+tool timeout
+network timeout
+browser navigation timeout
+```
+
+The smallest applicable deadline wins.
+
+---
+
+# 48. Response Size Limits
+
+Prevent a target from exhausting memory.
+
+Configure:
+
+```text id="09x5st"
+max_response_bytes
+max_html_bytes
+max_script_bytes
+max_download_bytes
+max_websocket_message_bytes
+```
+
+When truncation occurs, explicitly record:
+
+```text id="2c1r7j"
+truncated = true
+```
+
+Never silently truncate.
+
+---
+
+# 49. URL Handling
+
+Create a URL validation/normalization service.
+
+It must:
+
+* parse URLs safely
+* normalize where appropriate
+* enforce allowed schemes
+* enforce scope
+* reject unsupported schemes
+* protect against malformed URLs
+
+Do not let arbitrary target-controlled URLs become unrestricted server-side requests.
+
+---
+
+# 50. SSRF Protection for the Platform
+
+The platform itself can become vulnerable to SSRF because it fetches attacker-controlled URLs.
+
+Implement protections around server-side network access.
+
+At minimum:
+
+```text id="o6h5xv"
+scope validation
+scheme validation
+DNS resolution controls
+private-network policy
+loopback policy
+redirect policy
+IP validation
+re-validation after redirects
+```
+
+The precise policy should be configurable for authorized labs.
+
+Never assume that checking only the original hostname is sufficient.
+
+---
+
+# 51. Redirect Handling
+
+When following redirects:
+
+```text id="e1f1vy"
+redirect target
+      ↓
+revalidate scope
+      ↓
+revalidate network policy
+      ↓
+follow only if allowed
+```
+
+Do not automatically follow arbitrary redirects across hosts.
+
+---
+
+# 52. DNS Rebinding Consideration
+
+The network layer should not assume that:
+
+```text hostname → one IP forever
+```
+
+For sensitive server-side fetching, resolve and validate destinations according to policy.
+
+This is especially important for the scanner itself.
+
+---
+
+# 53. Request Rate Control
+
+Every HTTP request passes through:
+
+```text id="j85m2m"
+engagement rate limiter
++
+target rate limiter
++
+worker budget
++
+global resource manager
+```
+
+The model cannot bypass rate limits.
+
+---
+
+# 54. Concurrency
+
+Support configurable concurrency.
+
+Example:
+
+```text id="j6rj5e"
+global concurrency
+per-target concurrency
+per-host concurrency
+per-identity concurrency
+browser concurrency
+```
+
+Do not assume that more concurrency means better testing.
+
+---
+
+# 55. Request Provenance
+
+Every request must record why it happened.
+
+Example:
+
+```text id="0b6jpx"
+source:
+    browser_observation
+    leader_task
+    worker_task
+    replay
+    verification
+```
+
+And:
+
+```text id="0t1v8r"
+parent_task
+hypothesis_id
+test_id
+```
+
+This is essential for explaining autonomous behavior.
+
+---
+
+# 56. Browser Action Provenance
+
+Likewise:
+
+```text id="d1n5vn"
+browser action
+    ↓
+task
+    ↓
+hypothesis
+    ↓
+strategy
+```
+
+A user should eventually be able to inspect:
+
+> Why did the agent click this?
+
+and receive an auditable answer based on stored decision metadata.
+
+---
+
+# 57. Evidence Creation
+
+Every significant interaction can create evidence.
+
+Do not store every artifact blindly.
+
+Classify:
+
+```text id="n3e9x2"
+RAW
+DERIVED
+SUMMARY
+SCREENSHOT
+NETWORK
+BROWSER_TRACE
+SOURCE
+```
+
+Raw evidence should remain immutable.
+
+---
+
+# 58. Observation Pipeline Interface
+
+Part 3 must publish normalized observations.
+
+Conceptually:
+
+```json id="41fl1u"
+{
+  "observation_type": "HTTP_RESPONSE",
+  "source": "HTTP",
+  "request_id": "REQ_123",
+  "response_id": "RESP_123",
+  "summary": {
+    "status": 200,
+    "content_type": "application/json",
+    "length": 4821
+  },
+  "artifact_refs": [
+    "ART_123"
+  ]
+}
+```
+
+The detailed observation engine comes in Part 4.
+
+---
+
+# 59. Worker Interaction
+
+A worker should not directly instantiate Playwright or an HTTP client.
+
+Instead:
+
+```text id="qk3d1e"
+Worker
+ ↓
+ToolExecutionRequest
+ ↓
+Tool Registry
+ ↓
+Browser/HTTP Service
+```
+
+This makes workers replaceable and auditable.
+
+---
+
+# 60. Browser Worker Example Flow
+
+Conceptual sequence:
+
+```text id="gbyrju"
+Task:
+"Investigate login workflow."
+
+        ↓
+
+Browser Worker
+
+        ↓
+
+browser.navigate("/login")
+
+        ↓
+
+browser.snapshot()
+
+        ↓
+
+browser.fill(username)
+
+        ↓
+
+browser.fill(password)
+
+        ↓
+
+browser.click("Login")
+
+        ↓
+
+network events captured
+
+        ↓
+
+session created
+
+        ↓
+
+dashboard discovered
+
+        ↓
+
+structured result
+```
+
+The worker should not return an enormous transcript.
+
+Return structured observations and evidence references.
+
+---
+
+# 61. HTTP Worker Example Flow
+
+```text id="0x8wly"
+Task:
+"Compare object access between identities."
+
+        ↓
+
+HTTP Worker
+
+        ↓
+
+load baseline request
+
+        ↓
+
+replay as Identity A
+
+        ↓
+
+controlled mutation
+
+        ↓
+
+replay as Identity B
+
+        ↓
+
+capture responses
+
+        ↓
+
+create comparison candidates
+
+        ↓
+
+structured result
+```
+
+The differential engine in Part 4 performs sophisticated comparison.
+
+---
+
+# 62. Browser + HTTP Cooperation
+
+This must be a first-class workflow.
+
+Example:
+
+```text id="a1r9w3"
+Browser discovers:
+POST /api/orders
+
+        ↓
+
+request captured
+
+        ↓
+
+HTTP request record
+
+        ↓
+
+HTTP Worker receives:
+"Investigate authorization behavior."
+
+        ↓
+
+replay under another identity
+
+        ↓
+
+observation
+
+        ↓
+
+leader
+```
+
+This is one of the system's most important capabilities.
+
+---
+
+# 63. Source Worker Integration
+
+The source worker may eventually receive:
+
+```text id="0tr0cy"
+JavaScript
+HTML
+source repository
+API specification
+configuration
+```
+
+But the tool layer must treat files as untrusted data.
+
+Source analysis will be specified in later parts.
+
+---
+
+# 64. Tool Output Sanitization
+
+Normalize tool output before sending it to an LLM.
+
+Remove unnecessary:
+
+* duplicate headers
+* huge bodies
+* binary content
+* repetitive DOM
+* irrelevant assets
+* excessive logs
+
+Replace large content with references and summaries.
+
+Example:
+
+```text id="0x5w4g"
+body:
+ARTIFACT_901
+
+summary:
+JSON object containing 23 fields
+```
+
+The worker can explicitly request relevant portions when needed.
+
+---
+
+# 65. Artifact Retrieval
+
+Create artifact references.
+
+The worker can request:
+
+```text id="9r0v0y"
+artifact.read
+artifact.extract
+artifact.search
+```
+
+rather than receiving entire files by default.
+
+This is essential for token efficiency.
+
+---
+
+# 66. Sensitive Data Redaction
+
+Implement configurable redaction for:
+
+```text id="f7q8vb"
+Authorization
+Cookie
+Set-Cookie
+API keys
+password fields
+tokens
+session identifiers
+```
+
+Store raw evidence securely where authorized.
+
+Do not expose secrets unnecessarily to the models.
+
+---
+
+# 67. Request Body Handling
+
+Support body types:
+
+```text id="m7b1kq"
+JSON
+form-urlencoded
+multipart
+text
+XML
+binary
+empty
+```
+
+Preserve raw representation where evidence requires it.
+
+Provide parsed representation separately.
+
+---
+
+# 68. Multipart Forms
+
+Represent multipart requests structurally.
+
+Do not force workers to construct multipart boundaries manually.
+
+The HTTP engine should handle serialization.
+
+---
+
+# 69. JSON Mutation Support
+
+The mutation engine should understand JSON structure.
+
+Example:
+
+```text id="6xk8t1"
+{
+  "user": {
+    "id": 381
+  }
+}
+```
+
+Allow mutation by JSON path/reference.
+
+Do not rely on string replacement.
+
+---
+
+# 70. Query Parameter Handling
+
+Represent query parameters individually.
+
+Support:
+
+```text id="0k5u0d"
+add
+remove
+replace
+duplicate
+reorder
+```
+
+The exact testing policies belong to later security logic.
+
+---
+
+# 71. Header Handling
+
+Represent headers structurally.
+
+Support controlled:
+
+```text id="w9i8nf"
+add
+remove
+replace
+```
+
+But enforce a denylist/allowlist for sensitive infrastructure headers as appropriate.
+
+---
+
+# 72. HTTP Method Handling
+
+The engine should support method mutation as a deterministic operation.
+
+However, method-changing operations must pass engagement policy.
+
+Do not assume all methods are safe.
+
+---
+
+# 73. Browser Security Policy
+
+The browser environment should be configurable for:
+
+```text id="d4l9w1"
+JavaScript enabled
+downloads
+popups
+geolocation
+camera
+microphone
+clipboard
+notifications
+```
+
+Default to restrictive permissions.
+
+Only enable capabilities required by the engagement.
+
+---
+
+# 74. Browser Resource Limits
+
+Configure:
+
+```text id="j4g1yq"
+max_pages
+max_contexts
+max_navigation_time
+max_total_browser_time
+max_screenshot_size
+max_trace_size
+```
+
+---
+
+# 75. Browser Cleanup
+
+When a task ends:
+
+```text id="7h4g4a"
+stop task
+ ↓
+close pages
+ ↓
+flush artifacts
+ ↓
+persist events
+ ↓
+close context if disposable
+```
+
+Avoid leaking browser processes.
+
+---
+
+# 76. Tool Security
+
+Tools themselves must be treated as privileged components.
+
+Do not allow arbitrary plugin/tool registration from an untrusted target.
+
+Tool definitions must be trusted application configuration.
+
+---
+
+# 77. External MCP Servers
+
+If external MCP servers are supported later:
+
+* explicitly register them
+* require operator approval
+* define capabilities
+* define network permissions
+* define secrets
+* sandbox where possible
+* audit all calls
+
+Do not automatically trust arbitrary MCP servers discovered online.
+
+---
+
+# 78. Tool Versioning
+
+Every tool invocation should record:
+
+```text id="j7o3oh"
+tool_name
+tool_version
+configuration_version
+```
+
+This improves reproducibility.
+
+---
+
+# 79. Determinism
+
+Where possible, the same tool input should produce a predictable structured result.
+
+External network behavior cannot be deterministic, but the tool's transformation and normalization logic should be.
+
+---
+
+# 80. Import Existing Traffic
+
+Support importing HTTP traffic through standard formats later.
+
+At minimum design for:
+
+```text id="2e1f1g"
+HAR
+```
+
+Imported requests must be:
+
+```text untrusted
+```
+
+and must pass scope validation before replay.
+
+---
+
+# 81. No Automatic Exploitation
+
+Part 3 is infrastructure.
+
+Do not add autonomous vulnerability exploitation logic here.
+
+The tool layer should provide controlled primitives.
+
+The strategic engine determines which approved operation to perform.
+
+---
+
+# 82. Testing Strategy
+
+Build tests using local mock applications.
+
+Do not test against arbitrary public websites.
+
+---
+
+## 82.1 Browser Unit/Integration Tests
+
+Test:
+
+* browser creation
+* context isolation
+* identity isolation
+* navigation
+* click
+* fill
+* screenshot
+* DOM snapshot
+* network capture
+* cookie capture
+* storage capture
+* download capture
+* WebSocket capture
+* cleanup
+
+---
+
+## 82.2 HTTP Tests
+
+Test:
+
+* request creation
+* response parsing
+* JSON handling
+* HTML handling
+* binary handling
+* replay
+* mutation
+* normalization
+* timeout
+* redirects
+* scope enforcement
+* response limits
+
+---
+
+## 82.3 Identity Tests
+
+Verify:
+
+```text id="f2f5x1"
+User A cookie ≠ User B cookie
+User A storage ≠ User B storage
+User A browser context ≠ User B browser context
+```
+
+---
+
+## 82.4 Security Tests
+
+Test:
+
+* out-of-scope redirect
+* private IP policy
+* loopback policy
+* malformed URL
+* oversized response
+* oversized WebSocket message
+* excessive redirects
+* tool permission violation
+* secret leakage
+* browser context leakage
+
+---
+
+# 83. Local Test Application
+
+Create or reuse a deliberately local test application for:
+
+```text id="n5g2ur"
+login
+multiple users
+API requests
+forms
+cookies
+localStorage
+WebSockets
+downloads
+redirects
+dynamic DOM
+```
+
+Do not use a real external target as a test fixture.
+
+---
+
+# 84. Definition of Done
+
+Part 3 is complete only when:
+
+### Browser
+
+* [ ] Playwright service works
+* [ ] contexts are isolated
+* [ ] identities map to contexts
+* [ ] browser actions work
+* [ ] network capture works
+* [ ] DOM snapshots work
+* [ ] screenshots work
+* [ ] downloads work
+* [ ] WebSockets are represented
+* [ ] cleanup works
+
+### HTTP
+
+* [ ] normalized request model exists
+* [ ] normalized response model exists
+* [ ] replay works
+* [ ] mutation interface exists
+* [ ] body types are supported
+* [ ] request/response limits work
+* [ ] redirect validation works
+
+### Sessions
+
+* [ ] identity/session abstraction works
+* [ ] cookies are isolated
+* [ ] storage is isolated
+* [ ] authentication references work
+* [ ] expiration is detected
+
+### Tooling
+
+* [ ] tool registry works
+* [ ] tool schemas are validated
+* [ ] tool permissions work
+* [ ] tool risk levels exist
+* [ ] policy is enforced
+* [ ] tool outputs are normalized
+
+### Security
+
+* [ ] scope is enforced
+* [ ] SSRF defenses exist
+* [ ] secrets are protected
+* [ ] untrusted target data is marked
+* [ ] resource limits work
+
+### Integration
+
+* [ ] browser traffic can become HTTP records
+* [ ] HTTP requests can be replayed
+* [ ] evidence references are generated
+* [ ] observations are emitted
+* [ ] worker-to-tool flow works
+
+---
+
+# 85. Final Architecture After Part 3
+
+At the end of this phase:
+
+```text id="w7q0p6"
+                    STRATEGIC LEADER
+                           |
+                           v
+                    TASK COMPILER
+                           |
+                           v
+                    TASK SCHEDULER
+                           |
+                           v
+                       WORKER
+                           |
+                           v
+                     TOOL REGISTRY
+                           |
+                +----------+----------+
+                |                     |
+                v                     v
+          BROWSER SERVICE       HTTP SERVICE
+                |                     |
+           Playwright             HTTP Client
+                |                     |
+                +----------+----------+
+                           |
+                    Network / Target
+                           |
+                           v
+                    REQUEST/RESPONSE
+                           |
+                           v
+                    OBSERVATION BUS
+                           |
+              +------------+------------+
+              |                         |
+              v                         v
+          Evidence                  Database
+              |
+              v
+        Strategic Context
+              |
+              v
+             LEADER
+```
+
+The system now has a functioning **interaction layer**, but it is still not yet a serious autonomous pentester.
+
+The next phase adds the intelligence that turns raw browser/HTTP activity into security reasoning:
+
+```text
+attack surface
+parameter intelligence
+authentication mapping
+authorization mapping
+workflow/state machines
+data-flow tracking
+mutation strategies
+differential testing
+anomaly detection
+hypothesis generation
+evidence correlation
+verification
+```
+
+That is **Part 4 — the Security Reasoning Engine**.

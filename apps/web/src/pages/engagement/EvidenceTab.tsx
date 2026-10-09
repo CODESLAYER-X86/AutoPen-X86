@@ -19,8 +19,8 @@ export function EvidenceTab({ engagementId }: { engagementId: string }): ReactNo
       {error && <ErrorBanner message={error} />}
       {data && data.items.length === 0 && (
         <EmptyState>
-          No evidence captured yet. Evidence is produced by the HTTP worker (Part 3) and browser
-          worker (Part 4); the immutable, hash-addressed evidence store behind this list is
+          No evidence captured yet. Evidence is produced by the HTTP engine, browser
+          service and workers (Part 3 interaction layer); the immutable, hash-addressed evidence store behind this list is
           already implemented.
         </EmptyState>
       )}

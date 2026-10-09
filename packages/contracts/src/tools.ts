@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { RISK_LEVELS, TOOL_CAPABILITIES } from '@aegis/shared';
 
 export const ToolDescriptorSchema = z.object({
-  name: z.string().regex(/^[a-z][a-z0-9]*(\.[a-z0-9-]+)+$/, 'Tool names are dotted, lowercase'),
+  name: z.string().regex(/^[a-z][a-z0-9]*(\.[a-z0-9_-]+)+$/, 'Tool names are dotted, lowercase (segments may contain - or _)'),
   version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Semantic version'),
   description: z.string().min(1).max(2000),
   risk_level: z.enum(RISK_LEVELS),

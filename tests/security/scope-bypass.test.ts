@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { validateAgentDecision } from '@aegis/contracts';
 import { ValidationError } from '@aegis/shared';
+import { z } from 'zod';
 import { ToolGateway, createDefaultToolRegistry } from '@aegis/tools';
 import { authHeaders, createTestApp, registerAndLogin, resetDatabase, type TestApp } from '../integration/helpers.js';
 
@@ -83,7 +84,23 @@ describe('scope bypass attempts via the API (spec §1.4, §40)', () => {
 });
 
 describe('model output cannot directly execute arbitrary actions (spec §1.3, §20, §40)', () => {
-  const gateway = new ToolGateway(createDefaultToolRegistry());
+  const registry = createDefaultToolRegistry();
+  registry.register({
+    name: 'http.request',
+    version: '1.0.0',
+    description: 'Deterministic fake network tool for scope-bypass tests',
+    inputSchema: z.object({ url: z.string() }),
+    outputSchema: z.object({ status: z.number() }),
+    riskLevel: 'MEDIUM',
+    capabilities: ['NETWORK', 'READ_ONLY'],
+    requiresScope: true,
+    urlFields: ['url'],
+    implemented: true,
+    async execute(): Promise<unknown> {
+      return { status: 200 };
+    },
+  });
+  const gateway = new ToolGateway(registry);
 
   it('free-form model prose fails schema validation and never reaches a tool', () => {
     const modelProse = 'I think we should run shell.exec("rm -rf /") on the target';
@@ -124,7 +141,9 @@ describe('model output cannot directly execute arbitrary actions (spec §1.3, §
   });
 
   it('network tools remain gated behind scope even with model pressure', async () => {
-    // A "perfect-looking" decision still cannot bypass the scope gate.
+    // Part 3: http.request is REAL — a "perfect-looking" call targeting the
+    // cloud metadata endpoint is rejected by the scope gate BEFORE any
+    // network I/O (the URL scope-check runs ahead of execution).
     const result = await gateway.execute('http.request', { url: 'http://169.254.169.254/latest/meta-data' }, {
       permissions: { network: true, browser: false, destructive: false },
       scope: {
@@ -140,10 +159,7 @@ describe('model output cannot directly execute arbitrary actions (spec §1.3, §
       },
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe('TOOL_NOT_IMPLEMENTED');
-    // NOTE: the tool is not implemented in Part 1, so it fails at the
-    // implemented-check BEFORE scope. The unit suite verifies the scope
-    // gate separately with an implemented network tool.
+    if (!result.ok) expect(result.error.code).toBe('SCOPE_VIOLATION');
   });
 });
 

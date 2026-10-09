@@ -46,7 +46,21 @@ export type IdPrefix =
   | 'STG' // strategy snapshot
   | 'MSG' // agent message (prompt/response audit)
   | 'MCL' // model call (token usage log)
-  | 'BGT'; // engagement budget
+  | 'BGT' // engagement budget
+  // Part 3 prefixes (interaction layer).
+  | 'RSP' // http response record
+  | 'CTX' // browser context
+  | 'PGE' // browser page
+  | 'BEV' // browser event
+  | 'CKE' // cookie record
+  | 'STE' // storage entry
+  | 'DMS' // dom snapshot
+  | 'DLD' // download record
+  | 'WSC' // websocket connection
+  | 'WSM' // websocket message
+  | 'TEX' // tool execution record
+  | 'AUS' // target-side auth state (identity authentication material ref)
+  | 'AWF'; // recorded authentication workflow
 
 /** Matches `<PREFIX>_<16..32 base32 chars>` and is case sensitive. */
 export const ID_PATTERN = /^[A-Z]{2,6}_[A-Z2-7]{16,32}$/;

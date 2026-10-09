@@ -158,3 +158,56 @@ launcher wired it still fails with the honest `NotImplementedError`.
 See `boundaries.md` for the security-relevant architecture, `data-model.md`
 for the schema, `events.md` for the event vocabulary, and
 `docs/security/threat-model.md` for the prompt-injection analysis.
+
+## Part 3 — the interaction layer
+
+Part 3 adds the deterministic interaction layer between the agent system
+and authorized web targets (spec Part 3 §0): the LLM decides **what** to
+investigate; the tool layer determines **how** the operation runs.
+
+```text
+                    STRATEGIC LEADER
+                           |
+                    TASK SCHEDULER
+                           |
+                      WORKER RUNTIME
+                           |
+                    TOOL REGISTRY  (gateway: policy/scope gates)
+                           |
+              +------------+-------------+
+              |                          |
+        HTTP ENGINE               BROWSER SERVICE
+        (fetch + SSRF policy)     (Playwright, identity-isolated contexts)
+              |                          |
+              +------ TRAFFIC RECORDER --+
+                         |
+              normalized HttpRequest/HttpResponse records
+              (shared by both paths — spec §14)
+                         |
+              evidence store + observation events
+```
+
+Key properties:
+
+* **One shared request model** (§14): browser captures are promoted into the
+  same `http_requests`/`http_responses` records the HTTP engine writes, so
+  captured traffic can be replayed and mutated.
+* **SSRF defence in depth** (§49-§52): URL validation (scope) + network
+  policy (scheme allowlist, DNS resolution + IP classification, loopback/
+  private ranges denied in production, re-validated per redirect hop).
+* **Identity isolation** (§3-§4, §29): one Playwright context per identity
+  (anonymous included); cookies/storage never cross contexts; secrets live
+  in the encrypted secret store and are injected at use time (§26).
+* **Explicit truncation** (§48): response/WebSocket/download size limits
+  record `truncated = true` — nothing is silently dropped.
+* **MCP boundary** (§42): the internal tool registry + gateway remains the
+  architecture; an MCP adapter is an optional transport in front of the
+  same gateway, never a dependency.
+* **Honest capabilities**: tools are registered with risk levels, zod
+  input/output schemas, version + configuration version (§43, §46, §78),
+  and every execution is audit-logged with redacted input.
+
+Services added in Part 3: `@aegis/target-http` (engine, mutation, recorder,
+HAR import, URL policy), `@aegis/session-manager` (identity auth state),
+`@aegis/browser` (Playwright service), `@aegis/toolbox` (the real tool
+implementations registered by the composition root).

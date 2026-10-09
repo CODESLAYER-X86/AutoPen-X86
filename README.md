@@ -6,6 +6,11 @@ boundaries and core contracts — implemented, built and tested.**
 **Part 2 of 8: the Agent Operating System — strategic leader, tactical
 workers, task compiler, scheduler, hypothesis engine, autonomous loop —
 implemented, built and tested.**
+**Part 3 of 8: the interaction layer — HTTP engine with SSRF defence,
+controlled mutation + replay, Playwright browser service with
+identity-isolated contexts, network capture promoted to shared request
+records, multi-identity sessions, HAR import, artifact retrieval —
+implemented, built and tested.**
 
 > **Authorized use only.** This platform is built for authorized penetration
 > testing, local security laboratories, intentionally vulnerable
@@ -63,22 +68,58 @@ implemented, built and tested.**
 - **Web UI**: agent tab (run control, hypotheses, tasks, strategies, dead
   ends, metrics) and a real findings tab
 
-**297 automated tests** (unit / integration / security / e2e) + a
-28-check smoke test, all green.
+## What Part 3 adds (real, runnable)
+
+- **HTTP engine** (`@aegis/target-http`): normalized request/response
+  model shared by engine AND browser capture; JSON/form/multipart/text/
+  XML/binary bodies; redirect following with **per-hop scope + network
+  re-validation**; response size limits with explicit truncation flags;
+  per-engagement/per-host rate limiting + bounded concurrency
+- **SSRF defence** (§49-§52): scheme allowlist, DNS resolution + IP
+  classification (loopback/private/link-local denied in production,
+  lab policy for fixtures), malformed-URL rejection
+- **Controlled mutation + replay** (§19-§22, §69-§72): structured
+  mutations (query/header/cookie/JSON-path/form/method/path) create NEW
+  immutable requests; originals never change; scope re-validated on
+  execution
+- **Browser service** (`@aegis/browser`, Playwright): per-engagement
+  browser, **one isolated context per identity** (anonymous included),
+  16 deterministic actions with semantic selectors, structured event
+  stream, network capture promoted into HTTP records, DOM snapshots +
+  diffs, cookies/storage captured into the secret store (values never
+  stored), downloads as untrusted sha256 evidence, WebSocket
+  observation, screenshots, finally-style cleanup
+- **Session manager** (`@aegis/session-manager`): identity → auth state
+  (cookies/bearer/JWT/custom headers/browser storage), injection at use
+  time, expiration detection (401/403/auth-redirect/logout) as
+  observations — never auto re-authentication; login workflows recorded
+  as reusable identity sessions
+- **Toolbox** (`@aegis/toolbox`): 23 real tools — `http.request/replay/
+  mutate`, `browser.navigate/click/fill/submit/snapshot/screenshot/…`,
+  `websocket.observe`, `artifact.read/extract/search`, `har.import` —
+  each zod-schema'd, risk-classified, versioned, audit-logged with
+  redacted input (§43-§47, §78)
+- **13 new tables** (40 migrations total), 20 new API endpoints, HAR
+  import with scope filtering, tool-execution audit log
+
+**383 automated tests** (unit / integration / security / e2e — including
+real-Chromium browser suites against a local lab fixture app) + a
+43-check smoke test, all green.
 
 ## What is explicitly NOT implemented yet (by design)
 
-HTTP worker tools (Part 3: `http.*` remain registered-but-unimplemented;
-workers honestly report NEEDS_TOOL), browser automation (Part 4),
-knowledge retrieval (Part 5), reporting (Part 6+), vulnerability-specific
-workers. Registered interfaces return clear `NOT_IMPLEMENTED` errors; the
-UI marks them honestly.
+Knowledge retrieval (Part 5), reporting (Part 6+), security reasoning
+over captured traffic (Part 4: attack-surface mapping, parameter
+intelligence, authz mapping, differential testing), vulnerability-
+specific workers, source analysis. Registered interfaces return clear
+`NOT_IMPLEMENTED` errors; the UI marks them honestly.
 
 ## Quick start
 
 ```bash
 npm install
 cp .env.example .env
+npx playwright-core install chromium   # browser binaries (Part 3)
 npm run db:ensure      # starts embedded PostgreSQL on 127.0.0.1:5433
 npm run db:migrate
 npm run dev:api        # :4000
@@ -96,9 +137,9 @@ but decisions are rejected as non-JSON (honest mock behaviour); configure
 | Command | Purpose |
 |---|---|
 | `npm run typecheck` / `lint` / `build` | quality gates |
-| `npm run test` | all 297 tests (starts DB automatically) |
+| `npm run test` | all 383 tests (starts DB automatically) |
 | `npm run test:unit / :integration / :security / :e2e` | individual suites |
-| `npx tsx scripts/smoke.ts` | 28-check end-to-end smoke test |
+| `npx tsx scripts/smoke.ts` | 43-check end-to-end smoke test |
 | `npm run db:start / stop / ensure / migrate / reset` | embedded PostgreSQL lifecycle |
 
 ## Docs

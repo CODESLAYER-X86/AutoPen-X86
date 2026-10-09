@@ -30,6 +30,8 @@ import { identityRoutes } from './routes/identities.js';
 import { lifecycleRoutes } from './routes/lifecycle.js';
 import { telemetryRoutes } from './routes/telemetry.js';
 import { agentRoutes } from './routes/agent.js';
+import { httpRoutes } from './routes/http.js';
+import { browserRoutes } from './routes/browser.js';
 
 export interface BuildAppOptions {
   config?: AppConfig;
@@ -93,6 +95,19 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     await authenticated.register(lifecycleRoutes);
     await authenticated.register(telemetryRoutes);
     await authenticated.register(agentRoutes);
+    await authenticated.register(httpRoutes);
+    await authenticated.register(browserRoutes);
+  });
+
+  // Part 3 §75: browser cleanup even on graceful shutdown paths.
+  app.addHook('onClose', async () => {
+    const engagements = await ctx.pool
+      .query<{ id: string }>('SELECT DISTINCT engagement_id AS id FROM browser_contexts')
+      .then((result) => result.rows.map((row) => row.id))
+      .catch(() => [] as string[]);
+    for (const engagementId of engagements) {
+      await ctx.browserService.closeEngagement(engagementId).catch(() => undefined);
+    }
   });
 
   return app;

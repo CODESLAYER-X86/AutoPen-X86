@@ -8,7 +8,7 @@ describe('configuration validation (spec §33)', () => {
     expect(config.app.port).toBe(4000);
     expect(config.app.logLevel).toBe('info');
     expect(config.models.strategic.provider).toBe('mock');
-    expect(config.features.toolsHttp).toBe(false);
+    expect(config.features.toolsHttp).toBe(true); // Part 3: interaction tools implemented
     expect(config.security.corsOrigins).toEqual(['http://localhost:5173']);
   });
 

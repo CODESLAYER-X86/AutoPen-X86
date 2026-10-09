@@ -5,6 +5,10 @@
  * These definitions exist so the registry, the UI and the API can honestly
  * advertise the planned tool surface. Executing one returns a structured
  * failure (TOOL_NOT_IMPLEMENTED) instead of pretending to work.
+ *
+ * Part 3 note: the http.* / browser.* / artifact.* / har.import /
+ * websocket.observe tools are implemented by @aegis/toolbox and registered
+ * by the application composition root — they are no longer stubs.
  */
 import { NotImplementedError } from '@aegis/shared';
 import { z } from 'zod';
@@ -23,65 +27,6 @@ interface StubSpec {
 }
 
 const STUB_SPECS: StubSpec[] = [
-  {
-    name: 'http.request',
-    description: 'Sends a single HTTP request to an in-scope URL and records request/response as evidence.',
-    riskLevel: 'MEDIUM',
-    capabilities: ['NETWORK', 'READ_ONLY'],
-    requiresScope: true,
-    urlFields: ['url'],
-    plannedPart: 'Part 3 (HTTP worker)',
-  },
-  {
-    name: 'http.replay',
-    description: 'Replays a previously recorded HTTP request, optionally with modifications.',
-    riskLevel: 'MEDIUM',
-    capabilities: ['NETWORK', 'READ_ONLY'],
-    requiresScope: true,
-    urlFields: ['url'],
-    plannedPart: 'Part 3 (HTTP worker)',
-  },
-  {
-    name: 'browser.navigate',
-    description: 'Navigates the controlled browser to an in-scope URL.',
-    riskLevel: 'MEDIUM',
-    capabilities: ['BROWSER', 'NETWORK', 'READ_ONLY'],
-    requiresScope: true,
-    urlFields: ['url'],
-    plannedPart: 'Part 4 (Browser worker)',
-  },
-  {
-    name: 'browser.click',
-    description: 'Clicks an element in the controlled browser session.',
-    riskLevel: 'MEDIUM',
-    capabilities: ['BROWSER', 'MUTATION'],
-    requiresScope: true,
-    plannedPart: 'Part 4 (Browser worker)',
-  },
-  {
-    name: 'browser.fill',
-    description: 'Fills a form field in the controlled browser session.',
-    riskLevel: 'MEDIUM',
-    capabilities: ['BROWSER', 'MUTATION'],
-    requiresScope: true,
-    plannedPart: 'Part 4 (Browser worker)',
-  },
-  {
-    name: 'browser.submit',
-    description: 'Submits a form in the controlled browser session.',
-    riskLevel: 'HIGH',
-    capabilities: ['BROWSER', 'MUTATION'],
-    requiresScope: true,
-    plannedPart: 'Part 4 (Browser worker)',
-  },
-  {
-    name: 'browser.snapshot',
-    description: 'Captures DOM snapshot + screenshot of the current browser page.',
-    riskLevel: 'LOW',
-    capabilities: ['BROWSER', 'READ_ONLY'],
-    requiresScope: true,
-    plannedPart: 'Part 4 (Browser worker)',
-  },
   {
     name: 'parser.html',
     description: 'Parses HTML into a structured tree with form/anchor/script extraction.',

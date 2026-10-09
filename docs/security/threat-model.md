@@ -111,3 +111,18 @@ across projects, engagements, events, targets and lifecycle actions.
 Unchanged from Part 1: secrets live only in the encrypted secret store; the
 agent context projects identity names/roles only. A security test scans every
 persisted outbound agent message for secret values and secret references.
+
+## Part 3 — interaction layer threats
+
+| Threat | Vector | Mitigation |
+|---|---|---|
+| SSRF via the platform itself | target-controlled URLs fetched server-side | §50-§52: scheme allowlist + DNS resolution + IP classification (loopback/private/link-local denied in production) + per-hop redirect re-validation + size caps |
+| Scope bypass via redirects | 302 to an out-of-scope host | every hop re-validated against scope + network policy; fail-closed typed errors |
+| Credential leakage into model context | cookies/tokens in traffic records | §66: DB rows store redacted headers + secret-store references; raw bundles only in the hash-verified evidence store; tool outputs are sanitized previews |
+| Cross-identity contamination | shared browser state | §3/§29: one isolated Playwright context per identity; independent disposal verified by tests |
+| Malicious downloads | target serves payloads | §37: downloads stored as untrusted evidence with sha256; never executed; retention policy-gated |
+| Prompt injection via page/HTTP content | untrusted DOM/headers in model context | content enters as structured, bounded observations labeled untrusted; workers consume tool outputs, never raw pages |
+| Runaway browser processes | worker crashes mid-action | §5/§75: finally-style cleanup paths; app onClose drains all contexts; disconnected browsers mark contexts FAILED |
+| Resource exhaustion | huge responses / WS frames | §48: maxResponseBytes/maxWebSocketMessageBytes with explicit truncation flags; request body limits; rate + concurrency admission (§53-§54) |
+| Tool registry poisoning | untrusted tool registration | §76: tools are trusted application configuration only; registry validates metadata at registration |
+| DNS rebinding | hostname re-resolution between checks | §52: destinations resolved at validation time per request; policy configurable for authorized labs |

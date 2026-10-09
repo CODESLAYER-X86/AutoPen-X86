@@ -281,6 +281,154 @@ check(
   agentTypes.filter((t) => t.startsWith('AGENT') || t === 'HUMAN_OVERRIDE'),
 );
 
+
+// ---------------------------------------------------------------------------
+// Part 3: interaction layer (HTTP engine + browser + sessions + artifacts)
+// ---------------------------------------------------------------------------
+console.log('== part 3 interaction layer ==');
+
+r = await call('GET', '/api/meta');
+const metaFeatures = (r.json as { capabilities?: { autonomous_tools?: Record<string, boolean> } })?.capabilities?.autonomous_tools;
+check(
+  'meta reports interaction tools as real',
+  metaFeatures?.http === true && metaFeatures?.browser === true,
+  metaFeatures,
+);
+
+// A dedicated engagement with the lab target in scope.
+r = await call('POST', '/api/projects', { name: `smoke-p3-${Date.now()}`, description: '' });
+const p3ProjectId = (r.json as { id?: string })?.id ?? '';
+r = await call('POST', '/api/engagements', { project_id: p3ProjectId, name: 'p3-smoke', mode: 'PENTEST', description: '' });
+const p3EngagementId = (r.json as { id?: string })?.id ?? '';
+check('p3 engagement created', r.status === 201 && /^ENG_/.test(p3EngagementId), r);
+
+// Start a local fixture target for the interaction checks.
+const { startLabApp } = await import('../tests/fixtures/labApp.js');
+const lab = await startLabApp();
+try {
+  r = await call('POST', `/api/engagements/${p3EngagementId}/scope`, {
+    allowed_hosts: [lab.host],
+    allowed_domains: [],
+    allowed_ports: [lab.port],
+    allowed_schemes: ['http'],
+    excluded_hosts: [],
+    excluded_paths: [],
+    destructive_actions_allowed: false,
+  });
+  check('p3 scope saved around the lab app', r.status === 200, r);
+
+  // http.request through the API (gateway path).
+  r = await call('POST', `/api/engagements/${p3EngagementId}/http/request`, {
+    method: 'GET',
+    url: `${lab.url}/api/status`,
+  });
+  const p3RequestId = (r.json as { request_id?: string })?.request_id ?? '';
+  check(
+    'http.request executed + recorded',
+    r.status === 200 && /^REQ_/.test(p3RequestId) && (r.json as { status?: number })?.status === 200,
+    r,
+  );
+
+  // Replay (§19).
+  r = await call('POST', `/api/engagements/${p3EngagementId}/http/replay`, { request_id: p3RequestId });
+  check(
+    'http.replay executed with parent linkage',
+    r.status === 200 && (r.json as { request_id?: string })?.request_id !== p3RequestId,
+    r,
+  );
+
+  // Mutation (§20-§22).
+  r = await call('POST', `/api/engagements/${p3EngagementId}/http/mutate`, {
+    base_request_id: p3RequestId,
+    mutations: [{ location: 'query', name: 'smoke', operation: 'add', value: '1' }],
+    execute: true,
+  });
+  check(
+    'http.mutate applied + executed',
+    r.status === 200 && ((r.json as { applied?: unknown[] })?.applied ?? []).length === 1 && (r.json as { status?: number })?.status === 200,
+    r,
+  );
+
+  // Traffic list (§16-§18).
+  r = await call('GET', `/api/engagements/${p3EngagementId}/http/requests`);
+  check(
+    'http traffic listed',
+    r.status === 200 && ((r.json as { total?: number })?.total ?? 0) >= 3,
+    r,
+  );
+
+  // HAR import (§80).
+  r = await call('POST', `/api/engagements/${p3EngagementId}/http/har-import`, {
+    har: { log: { entries: [{ request: { method: 'GET', url: `${lab.url}/api/status` }, response: { status: 200 } }] } },
+  });
+  check(
+    'HAR import with scope filtering',
+    r.status === 200 && (r.json as { imported?: number })?.imported === 1,
+    r,
+  );
+
+  // Tool executions audit log (§78).
+  r = await call('GET', `/api/engagements/${p3EngagementId}/tool-executions`);
+  check(
+    'tool executions logged',
+    r.status === 200 && ((r.json as { items?: unknown[] })?.items ?? []).length >= 3,
+    r,
+  );
+
+  // Browser context + action (§3-§8).
+  r = await call('POST', `/api/engagements/${p3EngagementId}/browser/contexts`, { identity_id: null });
+  const p3ContextId = (r.json as { context_id?: string })?.context_id ?? '';
+  check('browser context opened', r.status === 200 && /^CTX_/.test(p3ContextId), r);
+
+  r = await call('POST', `/api/engagements/${p3EngagementId}/browser/actions`, {
+    context_id: p3ContextId,
+    page_id: null,
+    action: 'navigate',
+    url: `${lab.url}/login`,
+    timeout_ms: 15000,
+  });
+  check(
+    'browser.navigate executed + traffic captured',
+    r.status === 200 && (r.json as { ok?: boolean })?.ok === true && ((r.json as { http_records?: unknown[] })?.http_records ?? []).length >= 1,
+    r,
+  );
+
+  r = await call('POST', `/api/engagements/${p3EngagementId}/browser/actions`, {
+    context_id: p3ContextId,
+    page_id: null,
+    action: 'snapshot',
+  });
+  check(
+    'browser.snapshot captured DOM',
+    r.status === 200 && /^DMS_/.test((r.json as { details?: { snapshot_id?: string } })?.details?.snapshot_id ?? ''),
+    r,
+  );
+
+  r = await call('GET', `/api/engagements/${p3EngagementId}/browser/events?limit=50`);
+  const browserEventTypes: string[] = ((r.json as { items?: Array<{ event_type: string }> })?.items ?? []).map((e) => e.event_type);
+  check(
+    'browser events recorded',
+    r.status === 200 && browserEventTypes.includes('NAVIGATION_COMPLETED') && browserEventTypes.includes('RESPONSE_RECEIVED'),
+    [...new Set(browserEventTypes)],
+  );
+
+  r = await call('POST', `/api/engagements/${p3EngagementId}/browser/contexts/${p3ContextId}/close`, {});
+  check('browser context closed (§75)', r.status === 200 && (r.json as { status?: string })?.status === 'CLOSED', r);
+
+  // Scope enforcement: out-of-scope request refused (§49).
+  r = await call('POST', `/api/engagements/${p3EngagementId}/http/request`, {
+    method: 'GET',
+    url: 'http://out-of-scope.example.com/x',
+  });
+  check(
+    'out-of-scope request refused',
+    r.status >= 400,
+    r,
+  );
+} finally {
+  await lab.close();
+}
+
 console.log('== security headers ==');
 const response = await fetch(`${BASE}/api/meta`);
 check(

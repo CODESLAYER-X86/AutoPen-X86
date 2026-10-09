@@ -276,18 +276,20 @@ describe('failure simulation (spec Part 2 §75)', () => {
         decision: 'UPDATE_HYPOTHESIS',
         reasoning_summary: 'needs a hypothesis',
         change: 'CREATE',
-        hypothesis: { type: 'UNKNOWN', statement: 'Replay may reveal behavior differences.', confidence: 0.4 },
+        hypothesis: { type: 'UNKNOWN', statement: 'Prior CVEs may explain the endpoint behavior.', confidence: 0.4 },
       },
       {
         decision: 'CREATE_TASK',
-        reasoning_summary: 'replay the baseline request',
-        task: { objective: 'Replay the recorded request.', task_type: 'HTTP_ANALYSIS', allowed_tools: ['http.replay'] },
+        reasoning_summary: 'search prior knowledge for the observed pattern',
+        // knowledge.search is still a registered-but-unimplemented tool
+        // (Part 5) — the honest 501 surface this test exercises.
+        task: { objective: 'Search prior knowledge.', task_type: 'KNOWLEDGE_SUMMARY', allowed_tools: ['knowledge.search'] },
       },
     );
     // Worker: request the (honestly unimplemented) tool, observe the
     // structured error, then finalize with NEEDS_TOOL.
     ctx.tacticalScript.push(
-      { type: 'TOOL_CALL', tool: 'http.replay', input: { url: 'http://app.internal:8080/api/users/381' } },
+      { type: 'TOOL_CALL', tool: 'knowledge.search', input: { query: 'prior cve' } },
       {
         type: 'FINAL',
         result: {
@@ -296,7 +298,7 @@ describe('failure simulation (spec Part 2 §75)', () => {
           observations: [],
           evidence_ids: [],
           hypothesis_updates: [],
-          needs: { tools: ['http.replay'] },
+          needs: { tools: ['knowledge.search'] },
         },
       },
     );
@@ -306,11 +308,11 @@ describe('failure simulation (spec Part 2 §75)', () => {
     await engine.run();
 
     const tasks = await ctx.repos.tasks.listByEngagement(engagement.id, {});
-    const task = tasks.find((t) => t.type === 'HTTP_ANALYSIS');
+    const task = tasks.find((t) => t.type === 'KNOWLEDGE_SUMMARY');
     expect(task).toBeDefined();
     expect(task!.status).toBe('FAILED');
     expect(task!.failure_code).toBe('WORKER_NEEDS_TOOL');
     // The structured needs survive into the task result for the leader.
-    expect((task!.result as { needs?: { tools?: string[] } })?.needs?.tools).toContain('http.replay');
+    expect((task!.result as { needs?: { tools?: string[] } })?.needs?.tools).toContain('knowledge.search');
   });
 });

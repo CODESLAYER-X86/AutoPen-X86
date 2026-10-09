@@ -86,3 +86,30 @@ internals.
 
 Contracts live in `packages/contracts` and are the single source of truth for
 both frontend and backend (spec §28).
+
+## Part 3 — interaction endpoints
+
+All authenticated; engagement ownership enforced (404 on foreign resources).
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/engagements/:id/http/requests` | paginated traffic list (§16) |
+| GET | `/api/engagements/:id/http/requests/:requestId` | request + response pair |
+| POST | `/api/engagements/:id/http/request` | send a request (gateway path) (§15) |
+| POST | `/api/engagements/:id/http/replay` | replay a recorded request (§19) |
+| POST | `/api/engagements/:id/http/mutate` | structured mutation + execute (§20-§22) |
+| POST | `/api/engagements/:id/http/har-import` | import HAR traffic (untrusted, scope-filtered) (§80) |
+| GET | `/api/engagements/:id/tool-executions` | tool execution audit log (§78) |
+| POST | `/api/engagements/:id/browser/contexts` | open an identity context (§3-§4) |
+| GET | `/api/engagements/:id/browser/contexts` | list contexts |
+| POST | `/api/engagements/:id/browser/contexts/:cid/close` | deterministic cleanup (§75) |
+| POST | `/api/engagements/:id/browser/actions` | structured browser action (§7-§8) |
+| GET | `/api/engagements/:id/browser/events` | structured event stream (§11) |
+| GET | `/api/engagements/:id/browser/snapshots` | DOM snapshot list (§32) |
+| GET | `/api/engagements/:id/browser/cookies` | cookie descriptors (redacted, §23) |
+| GET | `/api/engagements/:id/browser/storage` | storage entries (redacted, §24) |
+| POST | `/api/engagements/:id/browser/contexts/:cid/capture-state` | capture cookies + storage |
+| POST | `/api/engagements/:id/browser/contexts/:cid/promote-session` | record login workflow -> identity session (§28) |
+| GET | `/api/engagements/:id/browser/downloads` | captured downloads (§37) |
+| GET | `/api/engagements/:id/browser/websockets` | WS connections + messages (§36) |
+| GET | `/api/engagements/:id/auth-workflows` | recorded auth workflows (§28) |

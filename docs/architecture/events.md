@@ -90,3 +90,19 @@ ids continue to correlate every agent operation.
 
 Events may carry a `dedup_key` (unique index): recovery replays never
 duplicate audit records (§65).
+
+## Part 3 — interaction events
+
+`HTTP_REQUEST_RECORDED`, `HTTP_RESPONSE_RECORDED`,
+`HTTP_MUTATION_APPLIED`, `HTTP_REPLAY_EXECUTED`, `HAR_IMPORTED`,
+`BROWSER_SESSION_STARTED`, `BROWSER_SESSION_CLOSED`,
+`BROWSER_CONTEXT_CREATED`, `BROWSER_CONTEXT_CLOSED`,
+`BROWSER_EVENT_RECORDED`, `DOM_SNAPSHOT_CAPTURED`,
+`DOM_CHANGE_DETECTED`, `DOWNLOAD_CAPTURED`,
+`WEBSOCKET_CONNECTION_OBSERVED`, `WEBSOCKET_MESSAGE_OBSERVED`,
+`SESSION_EXPIRATION_DETECTED`, `AUTH_WORKFLOW_RECORDED`,
+`TOOL_EXECUTION_RECORDED`, `RATE_LIMIT_ENFORCED`.
+
+Each browser action boundary flushes the structured event buffer; network
+captures additionally emit the HTTP record events through the traffic
+recorder. Every event payload is bounded and redacted upstream (§66).

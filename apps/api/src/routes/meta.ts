@@ -32,12 +32,13 @@ export async function metaRoutes(app: FastifyInstance): Promise<void> {
       capabilities: {
         tools_total: tools.length,
         tools_implemented: tools.filter((tool) => tool.implemented).length,
-        // Part 2: the autonomous agent loop is REAL. Tactical HTTP/browser
-        // TOOLS remain Part 3/4 (workers report NEEDS_TOOL honestly).
+        // Part 3: the interaction layer is REAL — HTTP engine, browser
+        // automation, replay/mutation, sessions, artifact retrieval.
+        // Security reasoning over the captured data arrives in Part 4.
         autonomous_run_loop: true,
         autonomous_tools: {
-          http: false, // Part 3
-          browser: false, // Part 4
+          http: c.config.features.toolsHttp,
+          browser: c.config.features.toolsBrowser,
           knowledge: false, // Part 5
         },
       },

@@ -133,6 +133,26 @@ export const EVENT_TYPES = [
   'OSCILLATION_DETECTED',
   'LOOP_PROTECTION_TRIGGERED',
   'HUMAN_OVERRIDE',
+  // Part 3 — Interaction layer event vocabulary (spec Part 3 §11, §58).
+  'HTTP_REQUEST_RECORDED',
+  'HTTP_RESPONSE_RECORDED',
+  'HTTP_MUTATION_APPLIED',
+  'HTTP_REPLAY_EXECUTED',
+  'HAR_IMPORTED',
+  'BROWSER_SESSION_STARTED',
+  'BROWSER_SESSION_CLOSED',
+  'BROWSER_CONTEXT_CREATED',
+  'BROWSER_CONTEXT_CLOSED',
+  'BROWSER_EVENT_RECORDED',
+  'DOM_SNAPSHOT_CAPTURED',
+  'DOM_CHANGE_DETECTED',
+  'DOWNLOAD_CAPTURED',
+  'WEBSOCKET_CONNECTION_OBSERVED',
+  'WEBSOCKET_MESSAGE_OBSERVED',
+  'SESSION_EXPIRATION_DETECTED',
+  'AUTH_WORKFLOW_RECORDED',
+  'TOOL_EXECUTION_RECORDED',
+  'RATE_LIMIT_ENFORCED',
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -300,5 +320,192 @@ export type TokenPurpose = (typeof TOKEN_PURPOSES)[number];
 export const POLICY_OUTCOMES = ['ALLOW', 'DENY', 'REQUIRE_USER_APPROVAL'] as const;
 export type PolicyOutcome = (typeof POLICY_OUTCOMES)[number];
 
-export const PLATFORM_VERSION = '0.2.0-part2';
+// ---------------------------------------------------------------------------
+// Part 3 — Interaction layer domain enums (spec Part 3 §5, §7-§9, §11, §16,
+// §17, §20, §25, §29, §36, §40, §43, §46, §57, §67, §70-§72).
+// ---------------------------------------------------------------------------
+
+/** HTTP methods the engine accepts (Part 3 §15). */
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const;
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/** Request body types (Part 3 §67). */
+export const HTTP_BODY_TYPES = [
+  'JSON',
+  'FORM_URLENCODED',
+  'MULTIPART',
+  'TEXT',
+  'XML',
+  'BINARY',
+  'EMPTY',
+] as const;
+export type HttpBodyType = (typeof HTTP_BODY_TYPES)[number];
+
+/** Response content classes (Part 3 §17). */
+export const HTTP_CONTENT_TYPES = [
+  'JSON',
+  'HTML',
+  'XML',
+  'TEXT',
+  'BINARY',
+  'IMAGE',
+  'FILE',
+  'UNKNOWN',
+] as const;
+export const HTTP_CONTENT_KIND_LABELS = HTTP_CONTENT_TYPES;
+export type HttpContentKind = (typeof HTTP_CONTENT_TYPES)[number];
+
+/** Where a recorded request came from (Part 3 §16). */
+export const HTTP_REQUEST_SOURCES = ['BROWSER', 'HTTP_WORKER', 'IMPORTED', 'REPLAY'] as const;
+export type HttpRequestSource = (typeof HTTP_REQUEST_SOURCES)[number];
+
+/** Request provenance: why the request happened (Part 3 §55). */
+export const HTTP_PROVENANCE_SOURCES = [
+  'browser_observation',
+  'leader_task',
+  'worker_task',
+  'replay',
+  'verification',
+  'import',
+] as const;
+export type HttpProvenanceSource = (typeof HTTP_PROVENANCE_SOURCES)[number];
+
+/** Traffic sources (Part 3 §40). */
+export const TRAFFIC_SOURCES = ['BROWSER_NATIVE', 'EXPLICIT_PROXY', 'IMPORTED_TRAFFIC'] as const;
+export type TrafficSource = (typeof TRAFFIC_SOURCES)[number];
+
+/** Browser context lifecycle (Part 3 §5). */
+export const BROWSER_CONTEXT_STATUSES = [
+  'CREATE',
+  'INITIALIZE',
+  'READY',
+  'ACTIVE',
+  'PAUSED',
+  'EXPIRED',
+  'CLOSING',
+  'CLOSED',
+  'FAILED',
+] as const;
+export type BrowserContextStatus = (typeof BROWSER_CONTEXT_STATUSES)[number];
+
+/** Deterministic browser actions (Part 3 §7). */
+export const BROWSER_ACTIONS = [
+  'navigate',
+  'go_back',
+  'go_forward',
+  'reload',
+  'click',
+  'fill',
+  'select_option',
+  'check',
+  'uncheck',
+  'press',
+  'hover',
+  'wait_for_url',
+  'wait_for_selector',
+  'screenshot',
+  'snapshot',
+] as const;
+export type BrowserAction = (typeof BROWSER_ACTIONS)[number];
+
+/** Selector strategies (Part 3 §9). Stable semantic selectors first. */
+export const SELECTOR_STRATEGIES = [
+  'role',
+  'text',
+  'label',
+  'placeholder',
+  'css',
+  'xpath',
+  'test_id',
+] as const;
+export type SelectorStrategy = (typeof SELECTOR_STRATEGIES)[number];
+
+/** Structured browser event stream (Part 3 §11). */
+export const BROWSER_EVENT_TYPES = [
+  'PAGE_CREATED',
+  'PAGE_CLOSED',
+  'NAVIGATION_STARTED',
+  'NAVIGATION_COMPLETED',
+  'NAVIGATION_FAILED',
+  'CLICK',
+  'INPUT',
+  'FORM_SUBMIT',
+  'DOM_CHANGE',
+  'REQUEST_STARTED',
+  'REQUEST_FINISHED',
+  'REQUEST_FAILED',
+  'RESPONSE_RECEIVED',
+  'CONSOLE_MESSAGE',
+  'PAGE_ERROR',
+  'COOKIE_CHANGED',
+  'STORAGE_CHANGED',
+  'DOWNLOAD_STARTED',
+  'DOWNLOAD_COMPLETED',
+  'WEBSOCKET_CREATED',
+  'WEBSOCKET_MESSAGE',
+  'WEBSOCKET_CLOSED',
+] as const;
+export type BrowserEventType = (typeof BROWSER_EVENT_TYPES)[number];
+
+/** Mutation locations (Part 3 §20-§21). */
+export const HTTP_MUTATION_LOCATIONS = [
+  'query',
+  'path',
+  'header',
+  'cookie',
+  'body_json',
+  'body_form',
+  'method',
+] as const;
+export type HttpMutationLocation = (typeof HTTP_MUTATION_LOCATIONS)[number];
+
+/** Mutation operations (Part 3 §70-§71). */
+export const HTTP_MUTATION_OPERATIONS = [
+  'add',
+  'remove',
+  'replace',
+  'duplicate',
+  'reorder',
+] as const;
+export type HttpMutationOperation = (typeof HTTP_MUTATION_OPERATIONS)[number];
+
+/** Authentication state kinds the session manager supports (Part 3 §25). */
+export const AUTH_STATE_KINDS = [
+  'COOKIE',
+  'BEARER',
+  'JWT',
+  'API_KEY',
+  'CUSTOM_HEADER',
+  'BROWSER_STORAGE',
+] as const;
+export type AuthStateKind = (typeof AUTH_STATE_KINDS)[number];
+
+/** WebSocket message directions (Part 3 §36). */
+export const WS_MESSAGE_DIRECTIONS = ['CLIENT_TO_SERVER', 'SERVER_TO_CLIENT'] as const;
+export type WsMessageDirection = (typeof WS_MESSAGE_DIRECTIONS)[number];
+
+/** Evidence classification (Part 3 §57). */
+export const EVIDENCE_CLASSIFICATIONS = [
+  'RAW',
+  'DERIVED',
+  'SUMMARY',
+  'SCREENSHOT',
+  'NETWORK',
+  'BROWSER_TRACE',
+  'SOURCE',
+] as const;
+export type EvidenceClassification = (typeof EVIDENCE_CLASSIFICATIONS)[number];
+
+/** Session expiration signals (Part 3 §27). */
+export const SESSION_EXPIRATION_SIGNALS = [
+  'HTTP_401',
+  'HTTP_403',
+  'AUTH_REDIRECT',
+  'TOKEN_INVALID',
+  'LOGOUT_DETECTED',
+  'SESSION_RESET',
+] as const;
+export type SessionExpirationSignal = (typeof SESSION_EXPIRATION_SIGNALS)[number];
+
+export const PLATFORM_VERSION = '0.3.0-part3';
 export const PLATFORM_NAME = 'Aegis Platform';

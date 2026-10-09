@@ -162,7 +162,9 @@ describe('e2e: full engagement flow over real HTTP (spec §32, §34)', () => {
     // Tools listing is honest about implementation state.
     const tools = await api('GET', '/api/tools', undefined, token);
     expect(tools.status).toBe(200);
-    expect(jsonField(tools.json, ['implemented'])).toBe(1);
+    // Part 3: parser.jwt + the interaction toolbox (http/browser/artifact/ws/har).
+    const implemented = jsonField(tools.json, ['implemented']);
+    expect(implemented).toBeGreaterThanOrEqual(21);
     expect(Number(jsonField(tools.json, ['total']))).toBeGreaterThan(1);
   });
 

@@ -7,7 +7,7 @@ import { ValidationError, type ToolCapability } from '@aegis/shared';
 import type { ToolDescriptor } from '@aegis/contracts';
 import type { ToolDefinition } from './types.js';
 
-const NAME_PATTERN = /^[a-z][a-z0-9]*(\.[a-z0-9-]+)+$/;
+const NAME_PATTERN = /^[a-z][a-z0-9]*(\.[a-z0-9_-]+)+$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 const VALID_CAPABILITIES: ToolCapability[] = [
   'READ_ONLY',

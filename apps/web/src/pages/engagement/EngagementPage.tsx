@@ -127,9 +127,11 @@ export function EngagementPage(): ReactNode {
           <h4>Status: RUNNING — autonomous agent available</h4>
           <p>
             The engagement is running. Start or inspect the autonomous agent (strategic leader,
-            tasks, workers, hypotheses) on the <strong>agent</strong> tab. The tactical HTTP and
-            browser tools arrive in Parts 3-4; until then workers report NEEDS_TOOL honestly
-            instead of pretending to test the target.
+            tasks, workers, hypotheses) on the <strong>agent</strong> tab. The Part 3 interaction
+            layer is live: workers can send HTTP requests, drive the identity-isolated browser,
+            replay and mutate captured traffic, and store evidence. Security reasoning over the
+            captured data arrives in Part 4; tools that are still planned report NEEDS_TOOL
+            honestly instead of pretending.
           </p>
         </div>
       )}

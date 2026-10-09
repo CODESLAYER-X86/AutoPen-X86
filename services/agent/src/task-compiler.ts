@@ -150,6 +150,7 @@ export class TaskCompiler {
     input: { engagementId: string; runId: string; decisionId: string },
     index: number,
   ): Promise<CompiledTask> {
+
     const { repos } = this.deps;
     const workerType = spec.worker_type ?? defaultWorkerForTaskType(spec.task_type);
     const allowedTools =

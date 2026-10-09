@@ -23,6 +23,19 @@ import { TaskAttemptsRepository } from './task-attempts.js';
 import { TasksRepository } from './tasks.js';
 import { TestsRepository } from './tests.js';
 import { UsersRepository } from './users.js';
+import { HttpRequestsRepository, HttpResponsesRepository } from './http-traffic.js';
+import {
+  AuthWorkflowsRepository,
+  BrowserContextsRepository,
+  BrowserEventsRepository,
+  BrowserPagesRepository,
+  CookiesRepository,
+  DomSnapshotsRepository,
+  DownloadsRepository,
+  StorageEntriesRepository,
+  ToolExecutionsRepository,
+  WebSocketsRepository,
+} from './interaction.js';
 
 export interface Repositories {
   users: UsersRepository;
@@ -51,6 +64,19 @@ export interface Repositories {
   agentMessages: AgentMessagesRepository;
   modelCalls: ModelCallsRepository;
   budgets: EngagementBudgetsRepository;
+  // Part 3 — interaction layer repositories.
+  httpRequests: HttpRequestsRepository;
+  httpResponses: HttpResponsesRepository;
+  browserContexts: BrowserContextsRepository;
+  browserPages: BrowserPagesRepository;
+  browserEvents: BrowserEventsRepository;
+  cookies: CookiesRepository;
+  storageEntries: StorageEntriesRepository;
+  domSnapshots: DomSnapshotsRepository;
+  downloads: DownloadsRepository;
+  websockets: WebSocketsRepository;
+  toolExecutions: ToolExecutionsRepository;
+  authWorkflows: AuthWorkflowsRepository;
 }
 
 export function createRepositories(pool: Pool): Repositories {
@@ -80,6 +106,18 @@ export function createRepositories(pool: Pool): Repositories {
     agentMessages: new AgentMessagesRepository(pool),
     modelCalls: new ModelCallsRepository(pool),
     budgets: new EngagementBudgetsRepository(pool),
+    httpRequests: new HttpRequestsRepository(pool),
+    httpResponses: new HttpResponsesRepository(pool),
+    browserContexts: new BrowserContextsRepository(pool),
+    browserPages: new BrowserPagesRepository(pool),
+    browserEvents: new BrowserEventsRepository(pool),
+    cookies: new CookiesRepository(pool),
+    storageEntries: new StorageEntriesRepository(pool),
+    domSnapshots: new DomSnapshotsRepository(pool),
+    downloads: new DownloadsRepository(pool),
+    websockets: new WebSocketsRepository(pool),
+    toolExecutions: new ToolExecutionsRepository(pool),
+    authWorkflows: new AuthWorkflowsRepository(pool),
   };
 }
 
@@ -110,4 +148,18 @@ export {
   TasksRepository,
   TestsRepository,
   UsersRepository,
+};
+export {
+  AuthWorkflowsRepository,
+  BrowserContextsRepository,
+  BrowserEventsRepository,
+  BrowserPagesRepository,
+  CookiesRepository,
+  DomSnapshotsRepository,
+  DownloadsRepository,
+  HttpRequestsRepository,
+  HttpResponsesRepository,
+  StorageEntriesRepository,
+  ToolExecutionsRepository,
+  WebSocketsRepository,
 };

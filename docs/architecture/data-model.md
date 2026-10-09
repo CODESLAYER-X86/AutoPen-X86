@@ -138,3 +138,25 @@ agent_messages: full prompt/response audit (untrusted_bytes counted)
 `HYPOTHESIS -> TESTING -> SUPPORTED -> VERIFICATION -> CONFIRMED FINDING`:
 the hypothesis engine gates CONFIRM on `viaVerification` (granted only for
 VERIFICATION-type tasks), then promotes an idempotent finding row.
+
+## Part 3 — interaction tables (migrations 028-040)
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `http_requests` | normalized request model (§16) | shared by engine + browser capture; redacted headers; provenance columns (§55) |
+| `http_responses` | normalized response model (§17) | artifact refs to bodies, explicit `truncated` flag (§48) |
+| `browser_contexts` | context registry (§3-§5) | status lifecycle CREATE→…→CLOSED/FAILED; per-identity |
+| `browser_pages` | pages per context (§74) | closed_at bookkeeping |
+| `browser_events` | structured event stream (§11) | bounded JSON payloads |
+| `cookies` | cookie descriptors (§23) | values only as secret-store references (`COOKIE_REF_…`) |
+| `storage_entries` | localStorage/sessionStorage (§24) | sensitive values redacted + referenced |
+| `dom_snapshots` | normalized DOM captures (§32) | elements/forms/links/ARIA; DERIVED evidence linkage |
+| `downloads` | captured downloads (§37) | sha256 + UNTRUSTED evidence reference |
+| `websocket_connections` / `websocket_messages` | WS observation (§36) | direction, sizes, truncation flags |
+| `tool_executions` | execution audit log (§44-§45, §78) | tool + configuration version, redacted input |
+| `auth_workflows` | recorded login workflows (§28) | steps + resulting session |
+
+State machine additions: **BrowserContext** `CREATE -> INITIALIZE -> READY ->
+ACTIVE -> (PAUSED) -> CLOSING -> CLOSED | EXPIRED | FAILED` (§5).
+**Session** gains `status_reason` (why it left ACTIVE, §27) and
+`engagement_id` scoping.
