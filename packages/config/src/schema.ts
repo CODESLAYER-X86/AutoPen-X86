@@ -76,7 +76,9 @@ export const EnvSchema = z.object({
   FEATURE_KNOWLEDGE_SEARCH: z
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
-    .default(false),
+    // Part 5 implements the knowledge subsystem — enabled by default;
+    // operators can still opt out per deployment.
+    .default(true),
   FEATURE_REPORTING: z
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
@@ -123,6 +125,40 @@ export const EnvSchema = z.object({
   REASONING_MAX_EXAMPLE_VALUES: positiveInt.default(8),
   REASONING_MAX_COMPARISON_BYTES: positiveInt.default(65536),
   REASONING_MAX_MUTATION_CANDIDATES: positiveInt.default(64),
+
+  // --- Part 5: Knowledge & Web Research (spec Part 5 §11, §27, §62-§63,
+  // §65, §69, §82-§83, §95, §107) ---
+  KNOWLEDGE_CHUNK_MIN_TOKENS: positiveInt.default(300),
+  KNOWLEDGE_CHUNK_MAX_TOKENS: positiveInt.default(800),
+  KNOWLEDGE_MAX_PACKET_TOKENS: positiveInt.default(2500),
+  KNOWLEDGE_WORKER_PACKET_TOKENS: positiveInt.default(1200),
+  KNOWLEDGE_CACHE_TTL_MS: positiveInt.default(300_000),
+  KNOWLEDGE_FETCH_MAX_PAGE_BYTES: positiveInt.default(2_097_152),
+  KNOWLEDGE_FETCH_MAX_REDIRECTS: positiveInt.default(5),
+  KNOWLEDGE_FETCH_TIMEOUT_MS: positiveInt.default(15_000),
+  KNOWLEDGE_SYNC_MAX_PAGES: positiveInt.default(25),
+  KNOWLEDGE_FETCH_MAX_CONCURRENCY: positiveInt.default(2),
+  KNOWLEDGE_RATE_PER_SOURCE_PER_MINUTE: positiveInt.default(10),
+  KNOWLEDGE_DAILY_FETCH_BUDGET: positiveInt.default(500),
+  KNOWLEDGE_RESEARCH_MAX_SEARCHES: positiveInt.default(3),
+  KNOWLEDGE_RESEARCH_MAX_PAGES: positiveInt.default(5),
+  KNOWLEDGE_RESEARCH_MAX_BYTES: positiveInt.default(5_242_880),
+  KNOWLEDGE_RESEARCH_MAX_TIME_MS: positiveInt.default(60_000),
+  KNOWLEDGE_RESEARCH_MAX_TOKENS: positiveInt.default(6000),
+  KNOWLEDGE_EMBEDDING_PROVIDER: z.enum(['hash', 'google', 'none']).default('hash'),
+  KNOWLEDGE_EMBEDDING_MODEL: z.string().min(1).max(128).default('aegis-hash-256-v1'),
+  KNOWLEDGE_EMBEDDING_DIMENSION: positiveInt.default(256),
+  KNOWLEDGE_SEMANTIC_WEIGHT: z.coerce.number().min(0).max(2).default(1.0),
+  KNOWLEDGE_KEYWORD_WEIGHT: z.coerce.number().min(0).max(2).default(1.0),
+  KNOWLEDGE_TRUST_WEIGHT: z.coerce.number().min(0).max(2).default(0.5),
+  KNOWLEDGE_FRESHNESS_WEIGHT: z.coerce.number().min(0).max(2).default(0.3),
+  KNOWLEDGE_CONTEXT_WEIGHT: z.coerce.number().min(0).max(2).default(0.4),
+  KNOWLEDGE_SPECIFICITY_WEIGHT: z.coerce.number().min(0).max(2).default(0.2),
+  KNOWLEDGE_DUPLICATE_PENALTY: z.coerce.number().min(0).max(1).default(0.15),
+  KNOWLEDGE_ALLOW_LOOPBACK: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
+    .default(false),
 });
 
 export type EnvRaw = z.infer<typeof EnvSchema>;
@@ -167,6 +203,45 @@ export interface AppConfig {
     maxExampleValues: number;
     maxComparisonBytes: number;
     maxMutationCandidates: number;
+  };
+  /** Part 5: knowledge & web research limits (spec Part 5 §62, §27, §69, §83). */
+  knowledge: {
+    chunkMinTokens: number;
+    chunkMaxTokens: number;
+    maxPacketTokens: number;
+    workerPacketTokens: number;
+    cacheTtlMs: number;
+    fetch: {
+      maxPageBytes: number;
+      maxRedirects: number;
+      timeoutMs: number;
+      syncMaxPages: number;
+      maxConcurrency: number;
+      ratePerSourcePerMinute: number;
+      dailyFetchBudget: number;
+      allowLoopback: boolean;
+    };
+    research: {
+      maxSearches: number;
+      maxPages: number;
+      maxBytes: number;
+      maxTimeMs: number;
+      maxTokens: number;
+    };
+    embedding: {
+      provider: 'hash' | 'google' | 'none';
+      model: string;
+      dimension: number;
+    };
+    weights: {
+      semantic: number;
+      keyword: number;
+      trust: number;
+      freshness: number;
+      context: number;
+      specificity: number;
+      duplicatePenalty: number;
+    };
   };
   /** Part 2: Agent OS tunables. */
   agent: {

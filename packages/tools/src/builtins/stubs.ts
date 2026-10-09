@@ -67,22 +67,9 @@ const STUB_SPECS: StubSpec[] = [
     requiresScope: false,
     plannedPart: 'Part 2 (Agent OS)',
   },
-  {
-    name: 'knowledge.search',
-    description: 'Searches the security knowledge base (write-ups, vulnerability references).',
-    riskLevel: 'LOW',
-    capabilities: ['READ_ONLY'],
-    requiresScope: false,
-    plannedPart: 'Part 5 (Knowledge)',
-  },
-  {
-    name: 'knowledge.fetch',
-    description: 'Fetches a knowledge base reference and returns its content.',
-    riskLevel: 'LOW',
-    capabilities: ['READ_ONLY'],
-    requiresScope: false,
-    plannedPart: 'Part 5 (Knowledge)',
-  },
+  // knowledge.search / knowledge.fetch were Part 1 stubs; the real Part 5
+  // implementations in @aegis/toolbox replaced them (registered by the API
+  // context when FEATURE_KNOWLEDGE_SEARCH is enabled).
 ];
 
 export function createStubTools(): ToolDefinition[] {

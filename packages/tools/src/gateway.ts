@@ -11,6 +11,8 @@
  *        BROWSER    -> permission
  *        DESTRUCTIVE-> engagement permission
  *        AUTHENTICATED -> identity in context
+ *        KNOWLEDGE_WEB_SEARCH / KNOWLEDGE_WEB_FETCH -> explicit knowledge
+ *        web permission (Part 5 §84 — fail closed when not granted)
  *   5. Execute with timeout
  *   6. Output validates against the schema (defense in depth)
  *
@@ -138,6 +140,18 @@ export class ToolGateway {
       throw new AuthorizationError(
         `Tool '${tool.name}' requires an identity in the execution context`,
         'TOOL_IDENTITY_REQUIRED',
+      );
+    }
+
+    // Part 5 §84: live web knowledge tools require an explicit, opt-in
+    // permission. Contexts that never set knowledgeWeb fail closed.
+    if (
+      (caps.includes('KNOWLEDGE_WEB_SEARCH') || caps.includes('KNOWLEDGE_WEB_FETCH')) &&
+      ctx.permissions.knowledgeWeb !== true
+    ) {
+      throw new AuthorizationError(
+        `Tool '${tool.name}' requires live web knowledge access which is not enabled in this context`,
+        'TOOL_KNOWLEDGE_WEB_FORBIDDEN',
       );
     }
 

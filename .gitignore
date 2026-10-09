@@ -23,3 +23,5 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
+tool-results/
+upload/

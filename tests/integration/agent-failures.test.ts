@@ -280,16 +280,17 @@ describe('failure simulation (spec Part 2 §75)', () => {
       },
       {
         decision: 'CREATE_TASK',
-        reasoning_summary: 'search prior knowledge for the observed pattern',
-        // knowledge.search is still a registered-but-unimplemented tool
-        // (Part 5) — the honest 501 surface this test exercises.
-        task: { objective: 'Search prior knowledge.', task_type: 'KNOWLEDGE_SUMMARY', allowed_tools: ['knowledge.search'] },
+        reasoning_summary: 'compare recorded responses for the observed pattern',
+        // diff.request is still a registered-but-unimplemented tool
+        // (Part 3 diff engine) — the honest 501 surface this test exercises.
+        // (knowledge.* tools became REAL in Part 5.)
+        task: { objective: 'Compare recorded responses.', task_type: 'HTTP_ANALYSIS', allowed_tools: ['diff.request'] },
       },
     );
     // Worker: request the (honestly unimplemented) tool, observe the
     // structured error, then finalize with NEEDS_TOOL.
     ctx.tacticalScript.push(
-      { type: 'TOOL_CALL', tool: 'knowledge.search', input: { query: 'prior cve' } },
+      { type: 'TOOL_CALL', tool: 'diff.request', input: { request_id: 'REQ_X' } },
       {
         type: 'FINAL',
         result: {
@@ -298,7 +299,7 @@ describe('failure simulation (spec Part 2 §75)', () => {
           observations: [],
           evidence_ids: [],
           hypothesis_updates: [],
-          needs: { tools: ['knowledge.search'] },
+          needs: { tools: ['diff.request'] },
         },
       },
     );
@@ -308,11 +309,11 @@ describe('failure simulation (spec Part 2 §75)', () => {
     await engine.run();
 
     const tasks = await ctx.repos.tasks.listByEngagement(engagement.id, {});
-    const task = tasks.find((t) => t.type === 'KNOWLEDGE_SUMMARY');
+    const task = tasks.find((t) => t.type === 'HTTP_ANALYSIS');
     expect(task).toBeDefined();
     expect(task!.status).toBe('FAILED');
     expect(task!.failure_code).toBe('WORKER_NEEDS_TOOL');
     // The structured needs survive into the task result for the leader.
-    expect((task!.result as { needs?: { tools?: string[] } })?.needs?.tools).toContain('knowledge.search');
+    expect((task!.result as { needs?: { tools?: string[] } })?.needs?.tools).toContain('diff.request');
   });
 });

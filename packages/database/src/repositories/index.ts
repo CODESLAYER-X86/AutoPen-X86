@@ -56,6 +56,22 @@ import {
   ParametersRepository,
   SecuritySignalsRepository,
 } from './reasoning-surface.js';
+import {
+  KnowledgeCacheRepository,
+  KnowledgeChunksRepository,
+  KnowledgeDocumentsRepository,
+  KnowledgeEmbeddingsRepository,
+  KnowledgeSourcesRepository,
+  KnowledgeVersionsRepository,
+} from './knowledge.js';
+import {
+  KnowledgeQueriesRepository,
+  KnowledgeReferencesRepository,
+  KnowledgeResultsRepository,
+  ResearchSourcesRepository,
+  ResearchTasksRepository,
+  SecurityTechniquesRepository,
+} from './knowledge-flows.js';
 
 export interface Repositories {
   users: UsersRepository;
@@ -112,6 +128,19 @@ export interface Repositories {
   attackNodes: AttackNodesRepository;
   attackEdges: AttackEdgesRepository;
   reasoningFailures: ReasoningFailuresRepository;
+  // Part 5 — knowledge & web research repositories.
+  knowledgeSources: KnowledgeSourcesRepository;
+  knowledgeDocuments: KnowledgeDocumentsRepository;
+  knowledgeChunks: KnowledgeChunksRepository;
+  knowledgeEmbeddings: KnowledgeEmbeddingsRepository;
+  knowledgeVersions: KnowledgeVersionsRepository;
+  knowledgeCache: KnowledgeCacheRepository;
+  knowledgeReferences: KnowledgeReferencesRepository;
+  securityTechniques: SecurityTechniquesRepository;
+  knowledgeQueries: KnowledgeQueriesRepository;
+  knowledgeResults: KnowledgeResultsRepository;
+  researchTasks: ResearchTasksRepository;
+  researchSources: ResearchSourcesRepository;
 }
 
 export function createRepositories(pool: Pool): Repositories {
@@ -167,6 +196,18 @@ export function createRepositories(pool: Pool): Repositories {
     attackNodes: new AttackNodesRepository(pool),
     attackEdges: new AttackEdgesRepository(pool),
     reasoningFailures: new ReasoningFailuresRepository(pool),
+    knowledgeSources: new KnowledgeSourcesRepository(pool),
+    knowledgeDocuments: new KnowledgeDocumentsRepository(pool),
+    knowledgeChunks: new KnowledgeChunksRepository(pool),
+    knowledgeEmbeddings: new KnowledgeEmbeddingsRepository(pool),
+    knowledgeVersions: new KnowledgeVersionsRepository(pool),
+    knowledgeCache: new KnowledgeCacheRepository(pool),
+    knowledgeReferences: new KnowledgeReferencesRepository(pool),
+    securityTechniques: new SecurityTechniquesRepository(pool),
+    knowledgeQueries: new KnowledgeQueriesRepository(pool),
+    knowledgeResults: new KnowledgeResultsRepository(pool),
+    researchTasks: new ResearchTasksRepository(pool),
+    researchSources: new ResearchSourcesRepository(pool),
   };
 }
 
@@ -227,4 +268,18 @@ export {
   WorkflowStatesRepository,
   WorkflowTransitionsRepository,
   WorkflowsRepository,
+};
+export {
+  KnowledgeCacheRepository,
+  KnowledgeChunksRepository,
+  KnowledgeDocumentsRepository,
+  KnowledgeEmbeddingsRepository,
+  KnowledgeQueriesRepository,
+  KnowledgeReferencesRepository,
+  KnowledgeResultsRepository,
+  KnowledgeSourcesRepository,
+  KnowledgeVersionsRepository,
+  ResearchSourcesRepository,
+  ResearchTasksRepository,
+  SecurityTechniquesRepository,
 };

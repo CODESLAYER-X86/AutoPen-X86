@@ -46,6 +46,10 @@ export type SessionType = (typeof SESSION_TYPES)[number];
 export const SESSION_STATUSES = ['ACTIVE', 'EXPIRED', 'REVOKED', 'INVALID'] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
+/** Tool capability vocabulary (spec §16). Part 5 adds the knowledge
+ *  capability family (spec Part 5 §84): local reads, web search, web fetch
+ *  and case memory are separately gated so operators can grant workers
+ *  retrieval without live web access. */
 export const TOOL_CAPABILITIES = [
   'READ_ONLY',
   'NETWORK',
@@ -53,6 +57,10 @@ export const TOOL_CAPABILITIES = [
   'MUTATION',
   'AUTHENTICATED',
   'DESTRUCTIVE',
+  'KNOWLEDGE_LOCAL_READ',
+  'KNOWLEDGE_WEB_SEARCH',
+  'KNOWLEDGE_WEB_FETCH',
+  'KNOWLEDGE_CASE_MEMORY',
 ] as const;
 export type ToolCapability = (typeof TOOL_CAPABILITIES)[number];
 
@@ -170,6 +178,18 @@ export const EVENT_TYPES = [
   'REASONING_HYPOTHESES_APPLIED',
   'REASONING_PROCESSOR_FAILED',
   'REASONING_INGEST_COMPLETED',
+  // Part 5 — Knowledge & Web Research event vocabulary (spec Part 5 §86,
+  // §119). Every retrieval/research action is observable and auditable.
+  'KNOWLEDGE_QUERY',
+  'KNOWLEDGE_RESULT',
+  'WEB_RESEARCH_STARTED',
+  'WEB_SOURCE_SELECTED',
+  'WEB_DOCUMENT_FETCHED',
+  'KNOWLEDGE_PACKET_CREATED',
+  'KNOWLEDGE_SOURCE_SYNCED',
+  'KNOWLEDGE_DOCUMENT_INDEXED',
+  'KNOWLEDGE_INGESTION_FAILED',
+  'RESEARCH_COMPLETED',
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -524,7 +544,7 @@ export const SESSION_EXPIRATION_SIGNALS = [
 ] as const;
 export type SessionExpirationSignal = (typeof SESSION_EXPIRATION_SIGNALS)[number];
 
-export const PLATFORM_VERSION = '0.4.0-part4';
+export const PLATFORM_VERSION = '0.5.0-part5';
 export const PLATFORM_NAME = 'Aegis Platform';
 
 // ---------------------------------------------------------------------------
@@ -827,3 +847,124 @@ export const STOP_RECOMMENDATIONS = [
   'RESOURCE_LIMIT',
 ] as const;
 export type StopRecommendation = (typeof STOP_RECOMMENDATIONS)[number];
+
+// ---------------------------------------------------------------------------
+// Part 5 — Security Knowledge & Web Research System domain enums (spec Part 5
+// §3, §5-§6, §8-§9, §29, §43, §58, §92, §102-§103).
+// ---------------------------------------------------------------------------
+
+/** Knowledge source categories (Part 5 §3). */
+export const KNOWLEDGE_SOURCE_TYPES = [
+  'OFFICIAL_SECURITY',
+  'SECURITY_TRAINING',
+  'STANDARDS',
+  'TECHNICAL_DOCUMENTATION',
+  'SECURITY_RESEARCH',
+  'CTF_WRITEUPS',
+  'CHALLENGE_REPOSITORIES',
+  'CASE_MEMORY',
+  'LIVE_WEB',
+] as const;
+export type KnowledgeSourceType = (typeof KNOWLEDGE_SOURCE_TYPES)[number];
+
+/** Trust categories (Part 5 §6). A ranking factor — NEVER a policy override. */
+export const KNOWLEDGE_TRUST_LEVELS = [
+  'OFFICIAL',
+  'TRUSTED_TRAINING',
+  'RESEARCH',
+  'CTF',
+  'COMMUNITY',
+  'UNTRUSTED',
+] as const;
+export type KnowledgeTrustLevel = (typeof KNOWLEDGE_TRUST_LEVELS)[number];
+
+/** Supported knowledge document formats (Part 5 §54). Adapters allow more. */
+export const KNOWLEDGE_DOCUMENT_TYPES = [
+  'HTML',
+  'MARKDOWN',
+  'TXT',
+  'JSON',
+  'XML',
+  'PDF',
+] as const;
+export type KnowledgeDocumentType = (typeof KNOWLEDGE_DOCUMENT_TYPES)[number];
+
+/** Source refresh strategies (Part 5 §29/§92). */
+export const KNOWLEDGE_UPDATE_STRATEGIES = [
+  'MANUAL',
+  'SCHEDULED',
+  'ON_DEMAND',
+  'INCREMENTAL',
+] as const;
+export type KnowledgeUpdateStrategy = (typeof KNOWLEDGE_UPDATE_STRATEGIES)[number];
+
+/** Ingestion pipeline lifecycle (Part 5 §115-§116). Embedding failure keeps
+ *  the document keyword-searchable; parser failure retains the raw artifact. */
+export const KNOWLEDGE_INGESTION_STATUSES = [
+  'PENDING',
+  'FETCHED',
+  'PARSED',
+  'INDEXED',
+  'EMBEDDING_FAILED',
+  'FAILED',
+] as const;
+export type KnowledgeIngestionStatus = (typeof KNOWLEDGE_INGESTION_STATUSES)[number];
+
+/** Semantic chunk kinds (Part 5 §9-§10, §56). Code blocks are stored
+ *  separately so retrieval can target conceptual examples without
+ *  contaminating surrounding prose. */
+export const KNOWLEDGE_CHUNK_KINDS = ['TEXT', 'HEADING', 'CODE', 'TABLE', 'PROCEDURE', 'EXAMPLE'] as const;
+export type KnowledgeChunkKind = (typeof KNOWLEDGE_CHUNK_KINDS)[number];
+
+/** Shared security taxonomy (Part 5 §58). Aligns with Part 4 hypothesis
+ *  categories so knowledge and reasoning share one vocabulary. */
+export const SECURITY_TAXONOMY = [
+  'AUTHENTICATION',
+  'AUTHORIZATION',
+  'SESSION',
+  'INPUT_VALIDATION',
+  'INJECTION',
+  'XSS',
+  'CSRF',
+  'SSRF',
+  'FILE_HANDLING',
+  'API',
+  'GRAPHQL',
+  'WEBSOCKET',
+  'BUSINESS_LOGIC',
+  'RACE_CONDITION',
+  'CRYPTO',
+  'CONFIGURATION',
+  'INFORMATION_DISCLOSURE',
+  'CLIENT_SIDE',
+] as const;
+export type SecurityTaxonomyCategory = (typeof SECURITY_TAXONOMY)[number];
+
+/** Research modes (Part 5 §103). The engagement chooses the mode; default
+ *  is CURATED_WEB — unrestricted research is never default (§104). */
+export const RESEARCH_MODES = [
+  'LOCAL_ONLY',
+  'CURATED_WEB',
+  'OPEN_RESEARCH',
+  'CTF_RESEARCH',
+] as const;
+export type ResearchMode = (typeof RESEARCH_MODES)[number];
+
+/** Research task lifecycle (Part 5 §71). */
+export const RESEARCH_STATUSES = [
+  'PENDING',
+  'RUNNING',
+  'COMPLETED',
+  'FAILED',
+  'CANCELLED',
+] as const;
+export type ResearchStatus = (typeof RESEARCH_STATUSES)[number];
+
+/** CTF retrieval modes (Part 5 §102). Pattern retrieval expands the search
+ *  space; exact-case retrieval is for benchmark evaluation only. */
+export const CTF_RETRIEVAL_MODES = ['PATTERN_RETRIEVAL', 'EXACT_CASE_RETRIEVAL'] as const;
+export type CtfRetrievalMode = (typeof CTF_RETRIEVAL_MODES)[number];
+
+/** Reference identifier kinds extracted from documents (Part 5 §57/§76). */
+export const KNOWLEDGE_REFERENCE_KINDS = ['CVE', 'CWE', 'OWASP', 'RFC', 'OTHER'] as const;
+export type KnowledgeReferenceKind = (typeof KNOWLEDGE_REFERENCE_KINDS)[number];

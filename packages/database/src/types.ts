@@ -35,6 +35,17 @@ import type {
   CorrelationKind,
   VerificationStatus,
   VerificationCheckStatus,
+  // Part 5 — Knowledge & Web Research enums.
+  KnowledgeSourceType,
+  KnowledgeTrustLevel,
+  KnowledgeDocumentType,
+  KnowledgeUpdateStrategy,
+  KnowledgeIngestionStatus,
+  KnowledgeChunkKind,
+  SecurityTaxonomyCategory,
+  KnowledgeReferenceKind,
+  ResearchMode,
+  ResearchStatus,
 } from '@aegis/shared';
 import type { Iso8601, JsonRecord } from '@aegis/shared';
 
@@ -673,5 +684,214 @@ export interface ReasoningFailureRecord {
   error: JsonRecord;
   retry_count: number;
   status: 'NEW' | 'RESOLVED' | 'SKIPPED';
+  created_at: Iso8601;
+}
+
+// ---------------------------------------------------------------------------
+// Part 5 — Knowledge & Web Research records (spec Part 5 §5-§9, §43, §57,
+// §71, §85, §95).
+// ---------------------------------------------------------------------------
+
+export interface KnowledgeCrawlPolicyRecord {
+  allowed_domains: string[];
+  blocked_domains: string[];
+  entry_paths: string[];
+  respect_robots: boolean;
+}
+
+export interface KnowledgeSourceRecord {
+  id: string;
+  name: string;
+  type: KnowledgeSourceType;
+  base_url: string;
+  trust_level: KnowledgeTrustLevel;
+  enabled: boolean;
+  update_strategy: KnowledgeUpdateStrategy;
+  crawl_policy: KnowledgeCrawlPolicyRecord;
+  license_notes: string | null;
+  last_synced: Iso8601 | null;
+  configuration: JsonRecord;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface KnowledgeDocumentMetadataRecord {
+  author?: string | null;
+  language?: string | null;
+  technologies?: string[];
+  cve_refs?: string[];
+  cwe_refs?: string[];
+  owasp_refs?: string[];
+  http_methods?: string[];
+  protocols?: string[];
+  security_categories?: SecurityTaxonomyCategory[];
+}
+
+export interface KnowledgeCtfRecord {
+  challenge_name: string;
+  event: string | null;
+  year: number | null;
+  category: string | null;
+  platform: string | null;
+  difficulty: string | null;
+  description: string;
+  technique: string | null;
+  solution_summary: string | null;
+}
+
+export interface KnowledgeDocumentRecord {
+  id: string;
+  source_id: string;
+  title: string;
+  canonical_url: string;
+  content_hash: string;
+  document_type: KnowledgeDocumentType;
+  trust_level: KnowledgeTrustLevel;
+  version: number;
+  published_at: Iso8601 | null;
+  retrieved_at: Iso8601;
+  updated_at: Iso8601;
+  ingestion_status: KnowledgeIngestionStatus;
+  ingestion_error: string | null;
+  metadata: KnowledgeDocumentMetadataRecord;
+  artifact_ref: string | null;
+  artifact_hash: string | null;
+  chunk_count: number;
+  ctf: KnowledgeCtfRecord | null;
+  is_latest: boolean;
+  superseded_by: string | null;
+}
+
+export interface KnowledgeChunkRecord {
+  id: string;
+  document_id: string;
+  heading: string | null;
+  heading_path: string[];
+  section: string | null;
+  content: string;
+  token_estimate: number;
+  kind: KnowledgeChunkKind;
+  code_language: string | null;
+  content_hash: string;
+  parent_chunk_id: string | null;
+  created_at: Iso8601;
+}
+
+export interface KnowledgeEmbeddingRecord {
+  chunk_id: string;
+  embedding: number[];
+  embedding_model: string;
+  embedding_version: number;
+  dimension: number;
+  content_hash: string;
+  created_at: Iso8601;
+}
+
+export interface SecurityTechniqueRecord {
+  id: string;
+  name: string;
+  category: SecurityTaxonomyCategory;
+  description: string;
+  preconditions: string[];
+  signals: string[];
+  test_patterns: string[];
+  verification_patterns: string[];
+  false_positive_conditions: string[];
+  source_ids: string[];
+  confidence: number;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface KnowledgeReferenceRecord {
+  id: string;
+  document_id: string | null;
+  chunk_id: string | null;
+  technique_id: string | null;
+  hypothesis_id: string | null;
+  kind: KnowledgeReferenceKind;
+  value: string;
+  context: string | null;
+  created_at: Iso8601;
+}
+
+export interface KnowledgeQueryRecord {
+  id: string;
+  engagement_id: string | null;
+  hypothesis_id: string | null;
+  requested_by: string;
+  query: string;
+  categories: string[];
+  technologies: string[];
+  mode: ResearchMode;
+  cache_key: string | null;
+  cache_hit: boolean;
+  result_count: number;
+  tokens_estimate: number;
+  created_at: Iso8601;
+}
+
+export interface KnowledgeResultRecord {
+  id: string;
+  query_id: string;
+  rank: number;
+  chunk_id: string | null;
+  technique_id: string | null;
+  relevance: number;
+  keyword_score: number;
+  semantic_score: number;
+  trust_score: number;
+  freshness_score: number;
+  final_score: number;
+  included: boolean;
+  created_at: Iso8601;
+}
+
+export interface ResearchTaskRecord {
+  id: string;
+  engagement_id: string | null;
+  requested_by: string;
+  question: string;
+  hypothesis: string | null;
+  required_evidence: string[];
+  source_constraints: string[];
+  mode: ResearchMode;
+  status: ResearchStatus;
+  max_sources: number;
+  max_tokens: number;
+  deadline_ms: number;
+  started_at: Iso8601 | null;
+  completed_at: Iso8601 | null;
+  error: string | null;
+  result: JsonRecord | null;
+  tokens_consumed: number;
+  created_at: Iso8601;
+}
+
+export interface ResearchSourceRecord {
+  id: string;
+  research_task_id: string;
+  document_id: string | null;
+  url: string;
+  domain: string;
+  trust_level: KnowledgeTrustLevel;
+  rank: number;
+  selected: boolean;
+  fetch_status: string | null;
+  fetched_bytes: number;
+  fetched_at: Iso8601 | null;
+  reason: string | null;
+  created_at: Iso8601;
+}
+
+export interface KnowledgeVersionRecord {
+  id: string;
+  embedding_model: string;
+  embedding_version: number;
+  chunker_min_tokens: number;
+  chunker_max_tokens: number;
+  dimension: number;
+  active: boolean;
+  note: string | null;
   created_at: Iso8601;
 }

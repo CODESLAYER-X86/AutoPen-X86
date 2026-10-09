@@ -89,7 +89,9 @@ describe('tool gateway (spec §17: model output cannot execute directly)', () =>
 
   it('rejects execution of registered-but-unimplemented tools with 501 semantics', async () => {
     const gateway = new ToolGateway(createDefaultToolRegistry());
-    const result = await gateway.execute('knowledge.search', { query: 'x' }, baseContext());
+    // knowledge.* stubs were replaced by real Part 5 implementations; a still
+    // deferred tool (evidence.store) demonstrates the honest 501 path.
+    const result = await gateway.execute('evidence.store', { content: 'x' }, baseContext());
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe('TOOL_NOT_IMPLEMENTED');

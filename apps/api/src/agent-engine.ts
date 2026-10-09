@@ -16,7 +16,7 @@ import type { Repositories } from '@aegis/database';
 import type { EventBus } from '@aegis/events';
 import type { ModelRouter } from '@aegis/model-runtime';
 import type { ToolGateway, ToolRegistry } from '@aegis/tools';
-import type { SecurityContextProvider } from '@aegis/contracts';
+import type { KnowledgeContextProvider, SecurityContextProvider } from '@aegis/contracts';
 import type { AgentLauncher } from '@aegis/orchestrator';
 import {
   AgentLoopEngine,
@@ -38,6 +38,8 @@ export interface AgentEngineRegistryDeps {
   toolGateway: ToolGateway;
   /** Part 4 §120: deterministic security projection provider. */
   security?: SecurityContextProvider;
+  /** Part 5 §120: knowledge packet provider (advisory only). */
+  knowledge?: KnowledgeContextProvider;
 }
 
 export class AgentEngineRegistry implements AgentLauncher {
@@ -335,6 +337,7 @@ export class AgentEngineRegistry implements AgentLauncher {
       quota,
       tokenBudgets,
       security: this.deps.security,
+      knowledge: this.deps.knowledge,
       options: {
         maxCycles: config.agent.loop.maxCycles,
         maxIdleCycles: config.agent.loop.maxIdleCycles,

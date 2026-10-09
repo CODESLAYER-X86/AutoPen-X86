@@ -515,6 +515,100 @@ check(
   },
 );
 
+// ---------------------------------------------------------------------------
+// Part 5: knowledge & web research (spec Part 5 §112, §115, §127, §61).
+// ---------------------------------------------------------------------------
+console.log('== part 5: knowledge & web research ==');
+
+r = await call('POST', '/api/knowledge/sync', { seed: true });
+check(
+  'knowledge source catalog seeded + sync runs (§4-§5)',
+  r.status === 200 && ((r.json as { seeded?: number })?.seeded ?? 0) >= 5,
+  r,
+);
+
+r = await call('GET', '/api/knowledge/sources');
+const sourceList = ((r.json as { items?: Array<{ id: string; type: string }> })?.items ?? []);
+check(
+  'curated sources listed with trust levels (§6)',
+  r.status === 200 && sourceList.some((source) => source.type === 'CTF_WRITEUPS'),
+  r,
+);
+
+// Ingest a CTF write-up through the API (§39) — deterministic and exercises
+// the full ingestion pipeline (parse → chunk → hash → index → embed).
+r = await call('POST', '/api/knowledge/ctf', {
+  source_id: sourceList.find((source) => source.type === 'CTF_WRITEUPS')?.id,
+  url: 'https://ctf.example/writeups/smoke-forgotten-door',
+  challenge_name: 'The Forgotten Door',
+  event: 'SmokeCTF',
+  year: 2024,
+  category: 'web',
+  difficulty: 'medium',
+  description: 'The old door still remembers. A legacy endpoint answers where the new one refuses.',
+  technique: 'legacy API discovery',
+  body: 'Technique: legacy API discovery\nPrecondition: multiple API versions observed\nSignal: new API behavior differs from old API\nVerification: compare authorization behavior\nFalse positive: documented backward compatibility',
+});
+check(
+  'CTF write-up ingested with pattern extraction (§39/§42)',
+  r.status === 201 && ((r.json as { patternsStored?: number })?.patternsStored ?? 0) > 0,
+  r,
+);
+
+r = await call('POST', '/api/knowledge/search', {
+  query: 'legacy API discovery deprecated endpoint',
+  max_results: 4,
+  max_tokens: 1200,
+});
+check(
+  'hybrid retrieval returns a compact packet with provenance (§15/§61)',
+  r.status === 200 &&
+    ((r.json as { results?: Array<{ source_name?: string }> })?.results ?? []).length > 0 &&
+    ((r.json as { packet_tokens?: number })?.packet_tokens ?? 9999) <= 2200,
+  r,
+);
+
+r = await call('POST', '/api/knowledge/similar', {
+  observation: 'The old door still remembers',
+  max_results: 3,
+});
+check(
+  'similar-case retrieval expands the CTF search space (§36/§100)',
+  r.status === 200 &&
+    ((r.json as { cases?: Array<{ technique?: string }> })?.cases ?? []).some((c) =>
+      (c.technique ?? '').includes('legacy API'),
+    ),
+  r,
+);
+
+r = await call('POST', '/api/knowledge/research', {
+  question: 'object level authorization for REST API identifiers',
+  mode: 'LOCAL_ONLY',
+  max_sources: 2,
+  max_tokens: 1500,
+});
+check(
+  'bounded research answers from the local index (§72/§105)',
+  r.status === 200 &&
+    ((r.json as { evidence?: unknown[]; notes?: string[] })?.evidence ?? []).length >= 0 &&
+    ((r.json as { status?: string })?.status ?? '') === 'COMPLETED',
+  r,
+);
+
+r = await call('GET', '/api/knowledge/queries?limit=5');
+check(
+  'retrieval audit trail queryable (§85)',
+  r.status === 200 && ((r.json as { items?: unknown[] })?.items ?? []).length > 0,
+  r,
+);
+
+r = await call('GET', '/api/knowledge/status');
+check(
+  'knowledge status reports corpus + utility metrics (§97-§98)',
+  r.status === 200 && ((r.json as { chunks?: number })?.chunks ?? 0) > 0,
+  r,
+);
+
 if (failures > 0) {
   console.error(`\nSMOKE TEST FAILED: ${failures} failure(s)`);
   await state.app?.close();

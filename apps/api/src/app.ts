@@ -33,6 +33,7 @@ import { agentRoutes } from './routes/agent.js';
 import { httpRoutes } from './routes/http.js';
 import { browserRoutes } from './routes/browser.js';
 import { reasoningRoutes } from './routes/reasoning.js';
+import { knowledgeRoutes } from './routes/knowledge.js';
 
 export interface BuildAppOptions {
   config?: AppConfig;
@@ -99,6 +100,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     await authenticated.register(httpRoutes);
     await authenticated.register(browserRoutes);
     await authenticated.register(reasoningRoutes);
+    await authenticated.register(knowledgeRoutes);
   });
 
   // Part 3 §75: browser cleanup even on graceful shutdown paths.

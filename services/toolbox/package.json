@@ -1,6 +1,6 @@
 {
   "name": "@aegis/toolbox",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -15,14 +15,14 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@aegis/contracts": "0.4.0",
-    "@aegis/database": "0.4.0",
-    "@aegis/security": "0.4.0",
-    "@aegis/session-manager": "0.4.0",
-    "@aegis/shared": "0.4.0",
-    "@aegis/target-http": "0.4.0",
-    "@aegis/browser": "0.4.0",
-    "@aegis/tools": "0.4.0",
-    "@aegis/evidence": "0.4.0"
+    "@aegis/contracts": "0.5.0",
+    "@aegis/database": "0.5.0",
+    "@aegis/security": "0.5.0",
+    "@aegis/session-manager": "0.5.0",
+    "@aegis/shared": "0.5.0",
+    "@aegis/target-http": "0.5.0",
+    "@aegis/browser": "0.5.0",
+    "@aegis/tools": "0.5.0",
+    "@aegis/evidence": "0.5.0"
   }
 }

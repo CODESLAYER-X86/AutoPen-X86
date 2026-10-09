@@ -148,3 +148,89 @@ engagement resource budget defaults.
   pipeline against the lab app: login → object endpoint → second identity →
   differential → hypothesis → verification), `tests/security/part4-reasoning-security.test.ts`
   (§115-§116 untrusted labeling, §132 permission boundaries, §113 limits).
+
+---
+
+## Part 5 — Knowledge subsystem operations (spec Part 5)
+
+### Feature flag
+
+`FEATURE_KNOWLEDGE_SEARCH=true` (default since Part 5) enables the
+knowledge engine, its 15 API routes and the four `knowledge.*` worker
+tools. Disabled deployments answer honest 501s and register no knowledge
+tools.
+
+### Seeding and synchronization
+
+```bash
+# Seed the curated catalog (OWASP WSTG/ASVS/API Top 10, PortSwigger,
+# MDN, RFCs, CWE, CTF feeds) and activate the index version marker:
+curl -XPOST /api/knowledge/sync -d '{"seed": true}'
+# Sync a specific source's configured entry paths (bounded by
+# KNOWLEDGE_SYNC_MAX_PAGES):
+curl -XPOST /api/knowledge/sync -d '{"source_id": "KSR_..."}'
+```
+
+Sources carry `entry_paths` in their crawl policy — the platform is
+curated and bounded, never an open crawler. Ingestion is idempotent:
+identical content re-ingests to zero changes; changed content creates a
+new version (§25); identical content at a new URL links to the canonical
+document (§67).
+
+### Embedding configuration
+
+`KNOWLEDGE_EMBEDDING_PROVIDER` selects the semantic path:
+
+* `hash` (default): fully deterministic, offline, no external calls —
+  real local semantic-ish retrieval for development and tests.
+* `google`: external REST embeddings (requires `GOOGLE_API_KEY`;
+  degrades to keyword-only when absent — §116 honesty).
+* `none`: keyword-only retrieval.
+
+`KNOWLEDGE_EMBEDDING_MODEL` / `KNOWLEDGE_EMBEDDING_DIMENSION` configure
+the provider. Model identifiers are never hard-coded (§107). Changing
+the model activates a NEW index version row (§95) — cached packets never
+cross index generations, and embeddings are reindexed per model.
+
+### Live research
+
+No web search provider is configured by default: `knowledge.search_web`
+returns honest empty results with a note, and CURATED_WEB research
+answers from the local index (§104). Operators inject a search provider
+through the engine composition (tests use a deterministic fake).
+
+The knowledge fetcher applies its OWN network policy (§26): SSRF defence
+via DNS resolution before connection, loopback/private/link-local denial
+(`KNOWLEDGE_ALLOW_LOOPBACK=true` for lab setups), per-source rate limits
+(`KNOWLEDGE_RATE_PER_SOURCE_PER_MINUTE`), daily budget
+(`KNOWLEDGE_DAILY_FETCH_BUDGET`), bounded reads
+(`KNOWLEDGE_FETCH_MAX_PAGE_BYTES`) with explicit truncation flags and
+redirect limits.
+
+### Retrieval quality (§96-§98)
+
+`GET /api/knowledge/status` reports corpus counts plus agent-utility
+metrics (cache hit rate, avg results/tokens per query, zero-result
+queries). The integration suite runs the §127 query set (authorization,
+JWT, WebSocket, GraphQL, business logic, legacy API) as a retrieval
+benchmark with Recall@K / MRR assertions; `computeMetrics()` in
+`@aegis/knowledge` exposes Recall@K, Precision@K, MRR, NDCG, duplicate
+rate and token statistics for custom evaluation sets.
+
+### Tuning knobs
+
+Retrieval weights (`KNOWLEDGE_*_WEIGHT`: semantic, keyword, trust,
+freshness, context, specificity, duplicate penalty), chunk sizes
+(`KNOWLEDGE_CHUNK_MIN/MAX_TOKENS`), packet budgets
+(`KNOWLEDGE_MAX_PACKET_TOKENS`, `KNOWLEDGE_WORKER_PACKET_TOKENS`), cache
+TTL (`KNOWLEDGE_CACHE_TTL_MS`), research budgets
+(`KNOWLEDGE_RESEARCH_MAX_*`) and fetch limits
+(`KNOWLEDGE_FETCH_*`) are documented in `.env.example`.
+
+### Tests
+
+```bash
+npx vitest run --config vitest.unit.config.ts tests/unit/part5-knowledge.test.ts        # 41 unit
+npx vitest run --config vitest.integration.config.ts tests/integration/part5-knowledge.test.ts  # 28 integration
+npx vitest run --config vitest.security.config.ts tests/security/part5-knowledge-security.test.ts  # 20 security
+```

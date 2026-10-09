@@ -23,6 +23,8 @@ export interface ToolExecutionContext {
     network: boolean;
     browser: boolean;
     destructive: boolean;
+    /** Part 5 §84: live web knowledge access — opt-in, fail closed. */
+    knowledgeWeb?: boolean;
   };
   logger?: Logger;
 }

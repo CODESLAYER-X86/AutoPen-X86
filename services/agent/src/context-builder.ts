@@ -15,7 +15,7 @@
 
 import type { Repositories, TaskRecord } from '@aegis/database';
 import type { ToolRegistry } from '@aegis/tools';
-import type { SecurityContextProvider, SecurityProjection } from '@aegis/contracts';
+import type { SecurityContextProvider, SecurityProjection, KnowledgeContextProvider } from '@aegis/contracts';
 import type { QuotaSnapshot, TokenBudgeter } from './quota.js';
 import { estimateTokens } from './quota.js';
 
@@ -35,6 +35,8 @@ export interface StrategicContext {
     identities: Array<Record<string, unknown>>;
     attack_surface: Record<string, unknown>;
     workflow_state: Record<string, unknown>;
+    /** Part 5 §87: trusted knowledge metadata (sources/trust/relevance). */
+    knowledge: Record<string, unknown> | null;
     observations: Array<Record<string, unknown>>;
     hypotheses: Array<Record<string, unknown>>;
     recent_tests: Array<Record<string, unknown>>;
@@ -55,6 +57,9 @@ export interface StrategicContext {
     ctf: Record<string, unknown> | null;
     /** Part 4 §115/§116: signal/test text derived from untrusted target data. */
     security_projection: Record<string, unknown> | null;
+    /** Part 5 §50/§115: retrieved external knowledge excerpts — rendered
+     * inside UNTRUSTED_EXTERNAL_KNOWLEDGE delimiters by the prompt layer. */
+    knowledge_excerpts: Record<string, unknown> | null;
   };
 }
 
@@ -63,6 +68,8 @@ export interface ContextBuilderDeps {
   tools: ToolRegistry;
   /** Part 4 §120: compact security projection provider (optional seam). */
   security?: SecurityContextProvider;
+  /** Part 5 §120: compact knowledge packet provider (optional seam). */
+  knowledge?: KnowledgeContextProvider;
 }
 
 export const DEFAULT_MAX_CONTEXT_TOKENS = 24_000;
@@ -70,6 +77,7 @@ export const DEFAULT_MAX_CONTEXT_TOKENS = 24_000;
 /** §7 priority order — indices reduce LAST to FIRST when shrinking. */
 const REDUCTION_ORDER = [
   'historical_background',
+  'knowledge_excerpts',
   'security_projection',
   'recent_tests',
   'dead_ends',
@@ -118,6 +126,16 @@ export class ContextBuilder {
       : null;
     const projection = securityProjection ? splitProjection(securityProjection) : null;
 
+    // Part 5 §87/§120: compact knowledge packet. Retrieved knowledge is
+    // advisory; excerpts are UNTRUSTED external content (§41/§50) rendered
+    // inside explicit delimiters. Failures degrade to the knowledge-free
+    // projection (§112 isolation).
+    const knowledgeContext = this.deps.knowledge
+      ? await this.deps.knowledge
+          .buildKnowledgeContext(engagementId)
+          .catch(() => null)
+      : null;
+
     // --- Trusted projection: structured facts over prose (§15) ---
     const trusted: StrategicContext['trusted'] = {
       engagement: {
@@ -163,6 +181,9 @@ export class ContextBuilder {
           ? { version: strategies.version, focus: strategies.focus, summary: strategies.summary }
           : null,
       },
+      // Part 5 §87: trusted knowledge metadata (source names, trust levels,
+      // relevance — never page content).
+      knowledge: knowledgeContext?.trusted_summary ?? null,
       // Observation INDEX (trusted metadata only; descriptions are untrusted).
       observations: observations.map((o) => ({
         id: o.id,
@@ -235,6 +256,9 @@ export class ContextBuilder {
             }
           : null,
       security_projection: projection ? projection.untrusted_detail : null,
+      // Part 5 §50/§41: excerpts wrapped in EXTERNAL_KNOWLEDGE delimiters
+      // by the prompt layer — external text is data, never instructions.
+      knowledge_excerpts: knowledgeContext?.untrusted_detail ?? null,
     };
 
     return this.reduceToBudget({ trusted, untrusted }, input.maxContextTokens);
@@ -266,6 +290,19 @@ export class ContextBuilder {
               findings: c.trusted.findings.slice(0, 5),
               dead_ends: c.trusted.dead_ends.slice(0, 5),
               recent_tests: c.trusted.recent_tests.slice(0, 8),
+            },
+          }));
+          break;
+        case 'knowledge_excerpts':
+          // Part 5 detail is supplementary: shrink excerpts first, then drop
+          // the section entirely before touching Part 2 core fields.
+          applyReducer((c) => ({
+            ...c,
+            untrusted: {
+              ...c.untrusted,
+              knowledge_excerpts: c.untrusted.knowledge_excerpts
+                ? shrinkSecurityDetail(c.untrusted.knowledge_excerpts)
+                : null,
             },
           }));
           break;

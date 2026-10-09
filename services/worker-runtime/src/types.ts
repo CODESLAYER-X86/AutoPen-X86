@@ -44,6 +44,8 @@ export interface WorkerExecutionContext {
     network: boolean;
     browser: boolean;
     destructive: boolean;
+    /** Part 5 §84: live web knowledge access — opt-in, fail closed. */
+    knowledgeWeb?: boolean;
   };
   /** The deterministic tool gateway — the ONLY path to tool execution. */
   toolGateway: {
@@ -55,7 +57,7 @@ export interface WorkerExecutionContext {
         engagementId?: string;
         identityId?: string;
         scope?: ScopeRules | null;
-        permissions: { network: boolean; browser: boolean; destructive: boolean };
+        permissions: { network: boolean; browser: boolean; destructive: boolean; knowledgeWeb?: boolean };
       },
     ): Promise<{
       ok: boolean;

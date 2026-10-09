@@ -75,7 +75,18 @@ export type IdPrefix =
   | 'AGE' // attack graph edge
   | 'DFC' // differential comparison result
   | 'VER' // verification record
-  | 'RFL'; // reasoning processor failure
+  | 'RFL' // reasoning processor failure
+  // Part 5 prefixes (knowledge & web research).
+  | 'KSR' // knowledge source
+  | 'KDC' // knowledge document
+  | 'KCK' // knowledge chunk
+  | 'KTF' // security technique
+  | 'KQR' // knowledge query (audit + cache)
+  | 'KRT' // knowledge retrieval result row
+  | 'KRF' // extracted knowledge reference (CVE/CWE/OWASP link)
+  | 'RSC' // research task
+  | 'RSR' // research source (selected/fetched during research)
+  | 'KVR'; // knowledge index/embedding version marker
 
 /** Matches `<PREFIX>_<16..32 base32 chars>` and is case sensitive. */
 export const ID_PATTERN = /^[A-Z]{2,6}_[A-Z2-7]{16,32}$/;

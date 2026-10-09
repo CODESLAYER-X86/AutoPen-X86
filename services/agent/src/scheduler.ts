@@ -242,6 +242,11 @@ export class TaskScheduler {
         // BROWSER capability + scope per invocation (§69).
         browser: input.scope !== null,
         destructive: input.scope?.destructive_actions_allowed ?? false,
+        // Part 5 §84: live web knowledge access is granted only when the
+        // engagement has a scope (authorized testing context) and the
+        // knowledge subsystem is enabled; the gateway still fail-closes
+        // on the capability check.
+        knowledgeWeb: input.scope !== null,
       },
       toolGateway: this.deps.toolGateway,
       requestId: generateId('REQ'),

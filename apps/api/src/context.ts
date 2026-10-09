@@ -24,7 +24,9 @@ import { SessionManager } from '@aegis/session-manager';
 import { BrowserService, DEFAULT_LAUNCH_OPTIONS } from '@aegis/browser';
 import { createPart3Tools } from '@aegis/toolbox';
 import { createPart4Tools } from '@aegis/toolbox';
+import { createPart5Tools } from '@aegis/toolbox';
 import { SecurityReasoningEngine } from '@aegis/reasoning';
+import { KnowledgeEngine } from '@aegis/knowledge';
 import { ConfigurationError, type ModelRole } from '@aegis/shared';
 import { AgentEngineRegistry } from './agent-engine.js';
 
@@ -51,6 +53,8 @@ export interface AppContext {
   reasoning: SecurityReasoningEngine | null;
   /** Stops the reasoning event subscription (called on app close). */
   stopReasoning: () => void;
+  /** Part 5 — knowledge & web research engine (null when disabled). */
+  knowledge: KnowledgeEngine | null;
   /** Route-level audit trail (spec §30). */
   audit: (entry: {
     actorUserId: string | null;
@@ -235,6 +239,31 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     );
     stopReasoning = reasoningEngine.processor.subscribe();
   }
+  // --- Part 5: knowledge & web research engine (§113, §118, §120) ------
+  let knowledgeEngine: KnowledgeEngine | null = null;
+  if (config.features.knowledgeSearch) {
+    knowledgeEngine = new KnowledgeEngine({
+      pool,
+      repos,
+      config,
+      objectStore,
+      eventBus,
+      logger,
+    });
+    toolRegistry.registerAll(
+      createPart5Tools({
+        knowledge: knowledgeEngine,
+        webSearch: {
+          search: (query, options) =>
+            (knowledgeEngine as KnowledgeEngine).searchWeb(query, options),
+        },
+        webSearchEnabled: false, // honest default: no live web provider configured
+        repos,
+        eventBus,
+      }),
+    );
+  }
+
   const toolGateway = new ToolGateway(toolRegistry);
 
   const modelRouter = new ModelRouter({
@@ -251,6 +280,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     toolRegistry,
     toolGateway,
     security: reasoningEngine ?? undefined,
+    knowledge: knowledgeEngine ?? undefined,
   });
 
   const orchestratorWithAgent = new OrchestratorService({
@@ -284,6 +314,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     browserService,
     reasoning: reasoningEngine,
     stopReasoning,
+    knowledge: knowledgeEngine,
     audit: async (entry) => {
       await repos.audit.create(entry);
     },

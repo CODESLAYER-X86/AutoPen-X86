@@ -143,3 +143,35 @@ When `FEATURE_SECURITY_REASONING=false` these routes answer **501**
 (`SECURITY_REASONING_DISABLED`) — honest unavailability. Worker tools:
 `reasoning.query`, `differential.compare`, `verification.evaluate`
 (READ_ONLY, engagement-bound).
+
+---
+
+## Part 5 — Knowledge & Web Research (spec Part 5 §112)
+
+All routes require a bearer token. Mutating routes are audited. When the
+knowledge subsystem is disabled (`FEATURE_KNOWLEDGE_SEARCH=false`) the
+routes answer **501 KNOWLEDGE_DISABLED** — honest unavailability.
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/knowledge/search` | Hybrid retrieval → compact, token-bounded packet (§17/§61) |
+| POST | `/api/knowledge/similar` | Similar-case retrieval from CTF case memory (§36) |
+| POST | `/api/knowledge/research` | Bounded live research task (§30/§72) |
+| GET | `/api/knowledge/research/:id` | Research task detail (sources, result, budgets) |
+| POST | `/api/knowledge/fetch` | Bounded live fetch + ingestion (§26/§115) |
+| POST | `/api/knowledge/ctf` | Ingest a CTF write-up with pattern extraction (§39/§42) |
+| GET | `/api/knowledge/sources` | Source registry (optional `?enabled=true`) |
+| GET | `/api/knowledge/techniques` | Structured security techniques (optional `?category=`) |
+| GET | `/api/knowledge/documents/:id` | Document with provenance |
+| GET | `/api/knowledge/documents/:id/versions` | Version history (§25) |
+| GET | `/api/knowledge/documents/:id/references` | Extracted CVE/CWE/OWASP references |
+| GET | `/api/knowledge/chunks/:id` | Chunk detail with heading path |
+| GET | `/api/knowledge/queries` | Retrieval audit trail (§85) |
+| GET | `/api/knowledge/status` | Corpus + agent-utility metrics (§97-§98) |
+| POST | `/api/knowledge/sync` | ADMIN (audited): seed catalog + sync sources (§29) |
+
+Engagement-scoped requests (`engagement_id` present) require engagement
+ownership. Worker-facing equivalents are the `knowledge.search`,
+`knowledge.similar_cases`, `knowledge.search_web` and `knowledge.fetch`
+tools (§33-§36) — live web tools require the `knowledgeWeb` permission
+(§84).

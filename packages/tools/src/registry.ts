@@ -16,6 +16,11 @@ const VALID_CAPABILITIES: ToolCapability[] = [
   'MUTATION',
   'AUTHENTICATED',
   'DESTRUCTIVE',
+  // Part 5 §84: knowledge capability family.
+  'KNOWLEDGE_LOCAL_READ',
+  'KNOWLEDGE_WEB_SEARCH',
+  'KNOWLEDGE_WEB_FETCH',
+  'KNOWLEDGE_CASE_MEMORY',
 ];
 
 export function validateToolDefinition(tool: ToolDefinition): void {

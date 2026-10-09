@@ -199,3 +199,36 @@ All derived state is idempotent by deterministic fingerprints (§111):
 Endpoint lifecycle (§10): DISCOVERED → OBSERVED → MAPPED/TESTING →
 INTERESTING/VERIFIED or IGNORED (merged). Signal lifecycle: NEW →
 CONSUMED (drove a hypothesis) / SUPERSEDED.
+
+---
+
+## Part 5 — Knowledge tables (migrations 052-061)
+
+| Table | Purpose | Key constraints |
+|---|---|---|
+| `knowledge_sources` | Curated source registry (§5): OWASP WSTG/ASVS/API Top 10, PortSwigger, MDN, RFCs, CTF write-up feeds | `UNIQUE(name)`, trust ∈ OFFICIAL/TRUSTED_TRAINING/RESEARCH/CTF/COMMUNITY/UNTRUSTED |
+| `knowledge_documents` | Documents with full provenance (§7-§8) and raw artifact references (§94) | `UNIQUE(canonical_url, version)`, hash-indexed; version history preserved via `is_latest`/`superseded_by` (§25) |
+| `knowledge_chunks` | Semantic chunks with heading paths (§9-§12); code blocks separate (§56) | GIN full-text index over heading+content (§13) |
+| `knowledge_chunk_embeddings` | Vectors with model + version + dimension (§14, §95) | chunk PK; per-model index — model changes are explicit reindexes |
+| `security_techniques` | Structured techniques: preconditions, signals, test patterns, verification, false-positives (§43) | `UNIQUE(name)`; aligned with the Part 4 hypothesis taxonomy |
+| `knowledge_references` | Extracted CVE/CWE/OWASP/RFC references + hypothesis cross-links (§57, §59, §76) | value-indexed; a CVE is knowledge, not target evidence |
+| `knowledge_queries` | Retrieval audit + cache key (§65, §85) | cache-key indexed with TTL |
+| `knowledge_results` | Persisted scored candidates with separate dimensions (§68, §97) | relevance/keyword/semantic/trust/freshness each 0..1 |
+| `research_tasks` | Bounded research workflows (§71, §83) | status PENDING→RUNNING→COMPLETED/FAILED; budgets recorded |
+| `research_sources` | Candidate sources considered/fetched per research task (§85) | trust level + selection reason retained |
+| `knowledge_versions` | Active index generation marker (§95) | single active row; embedding model + chunker params |
+| `knowledge_cache` | Compact packet cache (§65) | cache_key PK, TTL expiry |
+
+Lifecycles:
+
+* **Document ingestion** (§115-§116): PENDING → FETCHED → PARSED → INDEXED;
+  EMBEDDING_FAILED keeps the document keyword-searchable; FAILED retains
+  the raw artifact — the source is never lost.
+* **Versioning** (§25): same URL + changed content → new version row,
+  previous row `is_latest = false`, `superseded_by` set; identical
+  content re-ingestion is idempotent (§111).
+* **Duplicate content** (§67): same content hash at a different URL links
+  to the canonical document (`duplicate_of` in the ingestion outcome);
+  provenance of both URLs is retained.
+* **Research task** (§71): PENDING → RUNNING → COMPLETED/FAILED; every
+  outcome — including budget exhaustion — is persisted and published.

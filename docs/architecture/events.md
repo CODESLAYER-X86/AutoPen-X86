@@ -124,3 +124,24 @@ Consumption: the processor itself subscribes to Part 3 events
 (HTTP_REQUEST_RECORDED, DOM_SNAPSHOT_CAPTURED, SESSION_EXPIRATION_DETECTED,
 auth-workflow events) per §109; raw events remain durable even when an
 extractor fails (§110, §112).
+
+---
+
+## Part 5 — Knowledge event vocabulary (spec Part 5 §86, §119)
+
+| Event | Meaning |
+|---|---|
+| `KNOWLEDGE_QUERY` | A structured knowledge query was issued (with query id, categories) |
+| `KNOWLEDGE_RESULT` | Retrieval produced scored candidates |
+| `WEB_RESEARCH_STARTED` | A bounded research task started (question, mode) |
+| `WEB_SOURCE_SELECTED` | A candidate source was selected for fetching (URL, domain, trust) |
+| `WEB_DOCUMENT_FETCHED` | A knowledge document was fetched (bounded bytes, truncation flag) |
+| `KNOWLEDGE_PACKET_CREATED` | A compact packet was assembled (results, tokens, truncated) |
+| `KNOWLEDGE_SOURCE_SYNCED` | A curated source was synchronized |
+| `KNOWLEDGE_DOCUMENT_INDEXED` | A document completed ingestion (chunks, status) |
+| `KNOWLEDGE_INGESTION_FAILED` | A ingestion stage failed (stage, error) |
+| `RESEARCH_COMPLETED` | A research task completed or failed |
+
+Knowledge events use the `global` engagement id when not engagement-bound.
+Retrieval auditing additionally persists `knowledge_queries` /
+`knowledge_results` rows with the full scoring dimensions (§85, §97-§98).

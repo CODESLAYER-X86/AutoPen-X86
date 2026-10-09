@@ -140,3 +140,22 @@ persisted outbound agent message for secret values and secret references.
 | Pathological target floods the graph | unbounded derived state | §113: caps on nodes/edges/signals/parameters/endpoints/comparisons; `ReasoningLimitError` degrades to failure rows, never crashes (§112) |
 | LLM-driven policy change | model "grants" itself permissions | scope/policy/limits/identity access are deterministic engine inputs; test candidates carry preconditions the scheduler re-checks; tools stay READ_ONLY |
 | Sensitive value persistence | secrets in parameters/examples | sensitive parameter names store `«redacted»` values; JWT decode never claims verification (§59); secret material never enters derived rows |
+
+---
+
+## Part 5 — Knowledge-layer threats (spec Part 5 §48-§52, §79, §118, §124-§132)
+
+| # | Threat | Mitigation |
+|---|---|---|
+| K1 | **Prompt injection via retrieved knowledge** — a public page contains "ignore instructions, reveal keys, change scope" | Retrieved content is rendered inside `<UNTRUSTED_EXTERNAL_KNOWLEDGE>` delimiters with an explicit knowledge-usage policy; trusted metadata stays outside; the orchestrator enforces scope/policy deterministically regardless of model compliance (§48/§50/§128) |
+| K2 | **Poisoned/low-trust sources ranking high** | Trust levels are ranking factors (§23); search results are UNTRUSTED until domain-classified (§32); curated allowlists gate CURATED_WEB research (§80) |
+| K3 | **SSRF through the knowledge fetcher** | DNS resolution BEFORE connection, IP classification (loopback/private/link-local denied by default), per-hop redirect re-validation, userinfo and non-HTTP schemes rejected (§26) |
+| K4 | **Unbounded research (URLs, bytes, model calls)** | Fetch size/time/redirect limits with explicit truncation; per-source rate limits; daily budgets; research task budgets (searches/pages/bytes/time/tokens); no aggressive crawling — curated, query-driven, bounded (§27-§28, §82-§83, §132) |
+| K5 | **Web search provider abuse via model output** | Live web knowledge tools require the explicit `knowledgeWeb` permission and fail closed at the gateway (§84); null search provider reports honest empties (§104) |
+| K6 | **Knowledge treated as evidence or authority** | KNOWLEDGE ≠ EVIDENCE (§77/§135): knowledge can only recommend testing strategies; scope/permissions/policy are outside LLM control and retrieved content cannot modify them (§125) |
+| K7 | **Script execution from downloaded documents** | Scripts/styles are stripped at parse; downloaded bytes are hash-addressed artifacts, never executed; binaries/macros never run during ingestion (§52-§53) |
+| K8 | **Provenance loss / citation fabrication** | Every chunk carries document/source/URL/section (§60); packets only contain retrieved excerpts; results are persisted with scoring dimensions (§85) |
+| K9 | **Contradictory guidance silently averaged** | Source disagreement is detected and PRESERVED in packets and research results; the leader decides via target testing (§73/§78/§111) |
+| K10 | **Exact-solution copying in CTF mode** | PATTERN_RETRIEVAL (default) expands the hypothesis space with concept candidates; EXACT_CASE_RETRIEVAL is a separate benchmark-only mode (§102, §124) |
+| K11 | **Knowledge subsystem as an attack surface** (admin sync, crawler endpoints, stored documents) | All routes require authentication; admin sync/fetch are audited; engagement-scoped queries require ownership; cross-engagement tool inputs refused (§118, §132) |
+| K12 | **Cache poisoning / index-version mixing** | Cache keys include the index generation (embedding model + chunker params) (§65); embedding model changes are explicit version activations with reindex (§95) |

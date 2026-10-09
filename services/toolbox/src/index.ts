@@ -1,6 +1,7 @@
 export * from './part3-tools.js';
 export * from './har-tools.js';
 export * from './part4-tools.js';
+export * from './part5-tools.js';
 
 import type { ToolDefinition } from '@aegis/tools';
 import { createHttpTools, createBrowserTools, createWebsocketTools, createArtifactTools, type ToolboxDeps } from './part3-tools.js';

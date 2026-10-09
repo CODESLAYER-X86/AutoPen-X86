@@ -11,7 +11,9 @@ controlled mutation + replay, Playwright browser service with
 identity-isolated contexts, network capture promoted to shared request
 records, multi-identity sessions, HAR import, artifact retrieval —
 implemented, built and tested.**
-**Part 4 of 8: the security reasoning engine — deterministic attack-surface
+**Part 5 of 8: the security knowledge & web research system — hybrid
+retrieval, curated sources, CTF case memory, bounded live research,
+provenance and prompt-injection isolation.**
 extraction (endpoints/parameters/authorization matrix/objects/workflows/
 data flows), security signals, competing hypothesis candidates, test
 planning with information gain, semantic differential testing, skeptical
@@ -154,8 +156,56 @@ real-Chromium browser suites against a local lab fixture app) + a
 
 ## What is explicitly NOT implemented yet (by design)
 
-Knowledge retrieval (Part 5), reporting (Part 6+), security reasoning
-over captured traffic (Part 4: attack-surface mapping, parameter
+Reporting (Part 6+); test candidates are PLANNED deterministically — the
+Part 2 leader/scheduler decides execution. Knowledge retrieval is REAL
+since Part 5 (see below).
+
+## What Part 5 adds (real, runnable)
+
+* **Knowledge base**: 12-table data model — curated source registry
+  (OWASP WSTG/ASVS/API Top 10, PortSwigger, MDN, RFCs, CTF feeds),
+  versioned documents with provenance, semantic chunks with heading
+  paths, structured security techniques, extracted CVE/CWE/OWASP
+  references, query audit rows, persisted scored results, research
+  tasks and an index-version marker.
+* **Ingestion pipeline** (§115): HTML/Markdown/TXT/JSON/XML/PDF parsers
+  (a dependency-free PDF text extractor), sanitization (scripts removed,
+  code preserved), deterministic metadata extraction, semantic chunking
+  (300-800 token targets, code blocks separate), content hashing,
+  PostgreSQL FTS indexing and best-effort embeddings (failure keeps the
+  document keyword-searchable).
+* **Hybrid retrieval** (§15-§25): keyword (PG full-text) + semantic
+  (deterministic hashing embeddings by default, Google embeddings
+  optional), merged and deduplicated, reranked with configurable
+  weights — relevance, trust, freshness (CTF-aware decay), context,
+  specificity, duplicate penalty; corroboration detection and PRESERVED
+  source disagreement.
+* **Compact packets** (§61-§63): token-bounded (leader ≤ 2500, worker
+  ≤ 1200 tokens), primary + one corroborating source per concept,
+  provenance on every result; rendered inside
+  `<UNTRUSTED_EXTERNAL_KNOWLEDGE>` delimiters with a knowledge-usage
+  policy — prompt injection in public pages stays inert data.
+* **Case memory** (§36-§42): CTF write-ups with structured fields and
+  deterministic pattern extraction (technique/precondition/signal/test
+  pattern/verification/false-positive); riddle clue → concept candidates
+  (PATTERN_RETRIEVAL); EXACT_CASE_RETRIEVAL stays a distinct benchmark
+  mode.
+* **Bounded live research** (§26-§33, §72): SSRF-defended fetcher (DNS
+  before connection, loopback/private denial, redirect re-validation,
+  size/time/rate/daily budgets), research planner, trust-ranked source
+  selection, relevant-section extraction, corroboration/disagreement
+  — all audited; no configured search provider → honest empty results.
+* **Agent integration** (§120): the leader context carries a compact,
+  trust-separated knowledge packet derived from active hypotheses;
+  workers call the four `knowledge.*` tools (live web tools fail closed
+  without the `knowledgeWeb` permission, §84).
+* **Evaluation** (§96-§98): Recall@K / Precision@K / MRR / NDCG /
+  duplicate-rate metrics + agent-utility metrics surfaced on
+  `/api/knowledge/status`; the §127 query set runs as a retrieval
+  benchmark in the integration suite.
+
+Honest boundaries: reporting (Part 6); the Part 6 engine will combine
+Parts 2-5 into the long-running autonomous loop.
 intelligence, authz mapping, differential testing), vulnerability-
 specific workers, source analysis. Registered interfaces return clear
 `NOT_IMPLEMENTED` errors; the UI marks them honestly.
@@ -183,9 +233,9 @@ but decisions are rejected as non-JSON (honest mock behaviour); configure
 | Command | Purpose |
 |---|---|
 | `npm run typecheck` / `lint` / `build` | quality gates |
-| `npm run test` | all 383 tests (starts DB automatically) |
+| `npm run test` | all 575 tests (starts DB automatically) |
 | `npm run test:unit / :integration / :security / :e2e` | individual suites |
-| `npx tsx scripts/smoke.ts` | 43-check end-to-end smoke test |
+| `npx tsx scripts/smoke.ts` | 61-check end-to-end smoke test |
 | `npm run db:start / stop / ensure / migrate / reset` | embedded PostgreSQL lifecycle |
 
 ## Docs

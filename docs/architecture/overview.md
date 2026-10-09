@@ -305,3 +305,113 @@ graph, verification, prioritization, projection, limits) plus three
 read-only worker tools in `@aegis/toolbox` (`reasoning.query` §80,
 `differential.compare` §118, `verification.evaluate` §72) and 16 API
 routes under `/api/engagements/:id/reasoning/*`.
+
+---
+
+## Part 5 — Security Knowledge & Web Research System
+
+The knowledge subsystem is an **advisor** for the agents, never an
+authority over scope or policy. It answers "what testing strategy is
+relevant to this behavior?" without flooding model context, trusting
+arbitrary websites, or losing provenance.
+
+```text
+              LEADER / WORKER
+                     |
+                     v
+             Knowledge Request (structured, §17)
+                     |
+                     v
+             Knowledge Router (§103/§105)
+             LOCAL → CURATED → LIVE escalation
+                     |
+        +------------+------------+
+        v            v            v
+   Local Index   Web Search   Case Memory
+   (FTS + vectors) (bounded)  (CTF write-ups)
+        |            |
+        +------+-----+
+               v
+        Content Pipeline (§115)
+        FETCH → PARSE → SANITIZE → METADATA
+        → CHUNK → HASH → INDEX → EMBED
+               |
+       +-------+-------+
+       v               v
+  Keyword Index    Vector Index
+  (PG full-text)  (hashed embeddings)
+       |               |
+       +-------+-------+
+               v
+            Reranker (§22/§69)
+   relevance + trust + freshness + context
+   + specificity - duplicate penalty
+               |
+               v
+     Token Budget Filter (§62/§63)
+               |
+               v
+   Compact Knowledge Packet (§61)
+   + <UNTRUSTED_EXTERNAL_KNOWLEDGE> (§41/§50)
+               |
+               v
+            Agent Model
+```
+
+Key properties:
+
+* **KNOWLEDGE ≠ EVIDENCE, KNOWLEDGE ≠ AUTHORITY** (§135): knowledge
+  recommends techniques; only target observations become evidence.
+  Retrieved content can never modify scope, permissions or policy (§125).
+* **Hybrid retrieval** (§15-§16): PostgreSQL full-text search for exact
+  security terminology + deterministic hashing embeddings for conceptual
+  similarity; results merged, deduplicated by content hash and reranked
+  with configurable weights (§69).
+* **Prompt-injection isolation** (§48-§52, §128): external knowledge is
+  rendered inside explicit `<UNTRUSTED_EXTERNAL_KNOWLEDGE>` delimiters
+  with a knowledge-usage policy in the system prompt; trusted metadata
+  (source, trust level, relevance) stays outside the delimiters.
+  Sanitization removes scripts and never executes downloaded content.
+* **Provenance preserved** (§7, §60, §67): every chunk keeps document id,
+  source, URL and section; identical content under a different URL links
+  to the canonical document instead of duplicating; changed sources
+  create new VERSIONS, history is never overwritten (§25).
+* **Bounded live research** (§26-§33, §72, §83): a dedicated fetcher with
+  SSRF defence (DNS resolution before connection, loopback/private
+  denied by default), per-source rate limits, size limits with explicit
+  truncation flags, per-day budgets and research task budgets (searches,
+  pages, bytes, time, tokens). No web search provider configured →
+  honest empty results, never pretend searches (§104).
+* **Trust as a ranking factor** (§23, §129): OFFICIAL > TRUSTED_TRAINING
+  > RESEARCH > CTF > COMMUNITY > UNTRUSTED; trust never overrides policy.
+* **Freshness without collapse** (§24, §130): current material outranks
+  old, but historical CTF write-ups keep value; freshness never
+  overwhelms technical relevance.
+* **Case memory separation** (§37): engagement evidence stays in Part 2/4
+  state; CTF write-ups are a separate corpus with structured fields and
+  deterministic pattern extraction (§42: technique / precondition /
+  signal / test pattern / verification / false-positive).
+* **Source disagreement preserved** (§73, §111): corroborated claims and
+  disagreements are surfaced to the leader — never silently averaged.
+* **Model-efficient delivery** (§61-§63, §87-§88, §109): the leader
+  receives a bounded packet (default ≤ 2500 tokens) with primary +
+  one corroborating source per concept; workers get 2-6 chunks via the
+  knowledge.* tools; adaptive sizing honors the TPM budget.
+* **Auditable retrieval** (§85-§86): every query, result row, research
+  task, fetched source and packet creation is persisted and evented.
+* **Retrieval quality measured** (§96-§98): Recall@K, Precision@K, MRR,
+  NDCG, duplicate rate and agent-utility metrics over query rows — the
+  objective is USEFUL retrieval, not maximum retrieval.
+
+Integration seams:
+
+* Part 2 leader: `KnowledgeContextProvider` (§120) builds the compact
+  packet from active hypotheses — trusted metadata in the trusted
+  projection, excerpts in the untrusted section.
+* Part 4: the shared security taxonomy aligns knowledge categories with
+  hypothesis categories; `knowledge_references` cross-links hypotheses
+  with techniques and CVE/CWE/OWASP references (§59).
+* Workers: `knowledge.search`, `knowledge.similar_cases`,
+  `knowledge.search_web`, `knowledge.fetch` tools (§33-§36) behind the
+  gateway — live web tools require the explicit `knowledgeWeb`
+  permission and fail closed without it (§84).
