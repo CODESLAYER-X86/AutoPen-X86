@@ -220,6 +220,7 @@ specific workers, source analysis. Registered interfaces return clear
 ```bash
 npm install
 cp .env.example .env
+npm run build:server            # compiles workspace dist outputs (required before db:*)
 npx playwright-core install chromium   # browser binaries (Part 3)
 npm run db:ensure      # starts embedded PostgreSQL on 127.0.0.1:5433
 npm run db:migrate
@@ -227,20 +228,141 @@ npm run dev:api        # :4000
 npm run dev:web        # :5173 (proxies /api)
 ```
 
+`build:server` must run before any `db:*` command or `dev:api`: the database
+scripts import compiled workspace packages (`@aegis/config`,
+`@aegis/database`) from their `dist/` outputs, which only exist after the
+TypeScript project references have been built once.
+
 Then: register → create project → create engagement → configure scope →
 add target (out-of-scope targets are rejected) → start → *Start agent run*
 (agent tab). With the default mock model providers the loop mechanics run
 but decisions are rejected as non-JSON (honest mock behaviour); configure
 `STRATEGIC_MODEL_PROVIDER=google` + `GOOGLE_API_KEY` for real reasoning.
 
+## Agent setup — zero-human bootstrap
+
+This section is written for an **autonomous agent** (AI coding agent, CI
+runner, or a fresh container with repo access). Follow it top to bottom:
+every step is deterministic and self-verifying, and nothing requires human
+input. The only value a human ever needs to provide is `GOOGLE_API_KEY`
+(optional — real LLM reasoning); everything else runs on safe defaults.
+
+### 0. Contract for the operating agent
+
+- Run everything from the repository root.
+- Never commit `.env`, `data/`, `node_modules/` or `download/`; never echo
+  credential values into logs or output (the platform redacts secrets in its
+  own logs — keep that intact).
+- Do not disable `FEATURE_HARDENING`, weaken scope validation, or relax any
+  security control to make a step pass. If a step fails, apply the remedy
+  table below; if it still fails, stop and report — do not improvise around
+  security invariants.
+- Behaviours listed under "Honest behaviour" are by design and are NOT setup
+  failures — do not "fix" them.
+
+### 1. Prerequisites (self-check)
+
+| Check | Command | Required |
+|---|---|---|
+| Node.js >= 20 (24 tested) | `node --version` | yes |
+| npm >= 10 | `npm --version` | yes |
+| Network access | — | only for `npm install` and the Playwright download |
+
+No root, no system PostgreSQL, no Docker: PostgreSQL 17 binaries ship inside
+`node_modules` (embedded-postgres) and run as your own user; the vendored
+ICU 60 / OpenSSL 1.1 shared libraries are wired up automatically by
+self-healing symlinks. Host library versions do not matter.
+
+### 2. Bootstrap sequence
+
+```bash
+git clone https://github.com/CODESLAYER-X86/AutoPen-X86.git aegis && cd aegis
+npm install                      # workspaces + embedded PostgreSQL binaries
+cp .env.example .env             # ONLY if .env is absent — never commit it
+npm run build:server             # REQUIRED before any db:* script (see note)
+npx playwright-core install chromium   # browser binaries for the suites
+npm run db:ensure                # starts embedded PostgreSQL on 127.0.0.1:5433
+npm run db:migrate               # all 76 migrations (idempotent, hash-verified)
+```
+
+Why `build:server` comes before `db:ensure`: the `scripts/db/*` tools import
+compiled workspace packages (`@aegis/config`, `@aegis/database`) from their
+`dist/` outputs; those outputs only exist after the TypeScript project
+references have been built once. On any clean clone, skipping this step
+fails with `ERR_MODULE_NOT_FOUND`.
+
+### 3. Verification gates (run in order; every gate must pass)
+
+| # | Command | Success signal |
+|---|---|---|
+| 1 | `npm run typecheck` | exit 0 |
+| 2 | `npm run lint` | exit 0 |
+| 3 | `npm run build` | exit 0 (server + web production build) |
+| 4 | `npm run test` | **717 tests passed** — 425 unit / 193 integration / 97 security / 2 e2e; the script starts the database automatically |
+| 5 | `npx tsx scripts/smoke.ts` | last line `SMOKE TEST PASSED` (88 checks: register → login → project → engagement → scope → target → start → events → audit → … → Part 8 security console) |
+| 6 | `node apps/api/dist/server.js` then `curl -s http://127.0.0.1:4000/api/health` | `{"status":"ok","alive":true,…}`; `/api/ready` → `"ready":true` with postgresql healthy; `/api/metrics` without a token → `401` |
+
+Gate 6 boots the production server, which auto-applies pending migrations at
+startup (log line `{"event":"db.migrations","applied":0,"skipped":76}`). In
+development the `.env` file intentionally overrides stray shell variables
+(ports included), so change ports in `.env`, not in the environment.
+
+### 4. Failure → remedy table
+
+| Symptom | Cause | Remedy |
+|---|---|---|
+| `ERR_MODULE_NOT_FOUND …/@aegis/*/dist/index.js` | workspace not compiled yet | `npm run build:server` (always before `db:*` / `dev:api`) |
+| `CONFIG_VALIDATION_FAILED` naming any variable | `.env` missing, incomplete or corrupted | `cp .env.example .env` (file values are strings; the schema coerces) |
+| `browserType.launch: Executable doesn't exist …/chromium_headless_shell-####` | Playwright browser binary missing | `npx playwright-core install chromium` |
+| `db:ensure` hangs or `port 5433 already in use` | another embedded cluster is running | `npm run db:stop`, then retry `npm run db:ensure` |
+| broken/corrupted cluster | bad data directory | `npm run db:reset` (destroys + rebuilds cluster, databases, migrations) |
+| `EADDRINUSE :4000` | another API instance is up | stop it, or change `APP_PORT` in `.env` |
+| integration suites cannot reach the database | cluster down | `npm run db:ensure` (the `test` script does this automatically) |
+
+### 5. Serving
+
+```bash
+npm run dev:api      # development watch on :4000 (auto db:ensure + migrate)
+npm run dev:web      # UI on :5173, proxies /api → :4000
+# or production:
+npm run build && node apps/api/dist/server.js
+```
+
+API-first operation (no UI required): every capability is an HTTP route
+(see `docs/api/README.md`); `scripts/smoke.ts` is a working, complete
+example of the API-only flow and doubles as an agent-usable bootstrap probe.
+
+### 6. Honest behaviour that is NOT a failure
+
+- **Mock model providers (default)**: the loop runs mechanically but leader
+  decisions are rejected as non-JSON (`LEADER_DECISION_NOT_JSON`-style
+  rejections recorded as REJECTED decision cycles). For real reasoning set
+  `STRATEGIC_MODEL_PROVIDER=google`, `TACTICAL_MODEL_PROVIDER=google` and
+  `GOOGLE_API_KEY` — that key is the only human-provided value anywhere.
+- **`npm run deps:audit` fails closed**: the dependency gate deliberately
+  blocks on the known fastify 4 advisory (the 4→5 upgrade is gated behind
+  the Part 7 regression suite). Documented pre-production remediation.
+- **No configured web-search provider**: `knowledge.search_web` returns
+  honest empty results by design.
+- **`BROWSER_ENABLED=false`** only disables the runtime browser service; the
+  browser test suites build their own configs and run real Chromium.
+
+### 7. Reset (deterministic clean state)
+
+```bash
+npm run db:stop      # fast shutdown of the embedded cluster
+npm run db:reset     # destroy + rebuild cluster, databases, migrations
+rm -rf data/         # full dev wipe (artifacts + secrets) — dev only
+```
+
 ## Commands
 
 | Command | Purpose |
 |---|---|
 | `npm run typecheck` / `lint` / `build` | quality gates |
-| `npm run test` | all 640+ tests (starts DB automatically) |
+| `npm run test` | all 717 tests (starts DB automatically) |
 | `npm run test:unit / :integration / :security / :e2e` | individual suites |
-| `npx tsx scripts/smoke.ts` | 77-check end-to-end smoke test |
+| `npx tsx scripts/smoke.ts` | 88-check end-to-end smoke test |
 | `npm run db:start / stop / ensure / migrate / reset` | embedded PostgreSQL lifecycle |
 
 ## Docs

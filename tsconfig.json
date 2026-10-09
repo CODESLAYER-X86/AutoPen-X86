@@ -68,6 +68,9 @@
       "path": "services/verification-reporting"
     },
     {
+      "path": "services/production-hardening"
+    },
+    {
       "path": "apps/api"
     }
   ]

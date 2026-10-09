@@ -44,6 +44,22 @@ describe('configuration validation (spec §33)', () => {
     expect(config.browser.enabled).toBe(true);
   });
 
+  it('coerces Part 8 hardening numeric strings (fresh .env.example copy)', () => {
+    // Regression: these three knobs shipped with z.number() instead of
+    // z.coerce.number(), so a fresh `cp .env.example .env` (all values are
+    // strings there) failed CONFIG_VALIDATION_FAILED on a clean clone.
+    const config = loadConfig({
+      env: {
+        HARDENING_API_KEY_TTL_HOURS: '720',
+        HARDENING_GRANT_TTL_MINUTES: '60',
+        HARDENING_BREAKER_DEFAULT_THRESHOLD: '5',
+      },
+    });
+    expect(config.hardening.apiKeyTtlHours).toBe(720);
+    expect(config.hardening.grantTtlMinutes).toBe(60);
+    expect(config.hardening.breakerDefaultThreshold).toBe(5);
+  });
+
   it('ignores empty-string variables (treats them as unset)', () => {
     const config = loadConfig({ env: { SECRET_STORE_MASTER_KEY: '' } });
     expect(config.secretStore.masterKey).toBeUndefined();

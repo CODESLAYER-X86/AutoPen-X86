@@ -12,12 +12,20 @@
 ```bash
 npm install                       # installs all workspaces + PG binaries
 cp .env.example .env              # adjust if needed
+npm run build:server              # compiles workspace dist outputs — REQUIRED
+                                   # before db:* (scripts import @aegis/* dist)
 npm run db:ensure                 # init + start PG on 127.0.0.1:5433, create DBs
 npm run db:migrate                # apply migrations to the dev database
 npm run dev:api                   # API on :4000 (tsx watch)
 # second terminal:
 npm run dev:web                   # UI on :5173 with /api proxy to :4000
 ```
+
+On a clean clone the workspace has no `dist/` outputs yet, so `db:*` commands
+fail with `ERR_MODULE_NOT_FOUND` until `npm run build:server` has run once.
+The README "Agent setup — zero-human bootstrap" section documents the full
+deterministic sequence, verification gates and failure remedies for
+autonomous (agent-operated) setup.
 
 Open http://localhost:5173, create an account, a project, an engagement,
 configure the scope, add a target.

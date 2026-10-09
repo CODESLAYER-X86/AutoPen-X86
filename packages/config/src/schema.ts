@@ -99,11 +99,11 @@ export const EnvSchema = z.object({
   // auth secrets; production loads it from the secret store).
   INTERNAL_SERVICE_TOKEN_SECRET: z.string().min(16).default('dev-internal-service-secret-32bytes'),
   // Part 8 §11: default API credential TTL (hours).
-  HARDENING_API_KEY_TTL_HOURS: z.number().int().min(1).max(8760).default(720),
+  HARDENING_API_KEY_TTL_HOURS: z.coerce.number().int().min(1).max(8760).default(720),
   // Part 8 §14: default credential grant TTL (minutes).
-  HARDENING_GRANT_TTL_MINUTES: z.number().int().min(1).max(1440).default(60),
+  HARDENING_GRANT_TTL_MINUTES: z.coerce.number().int().min(1).max(1440).default(60),
   // Part 8 §98: circuit breaker default threshold (per-category overrides).
-  HARDENING_BREAKER_DEFAULT_THRESHOLD: z.number().int().min(1).max(100).default(5),
+  HARDENING_BREAKER_DEFAULT_THRESHOLD: z.coerce.number().int().min(1).max(100).default(5),
   // Part 4: the security reasoning engine is implemented — enabled by
   // default; operators can opt out per deployment.
   FEATURE_SECURITY_REASONING: z
