@@ -273,3 +273,15 @@ Stage Summary:
 - Part 8 Definition of Done (§123) met: SECURITY (hardened authn incl. API credentials, object-level authz tested per resource type, tenant isolation at app + RLS layers, secrets isolated + grants scoped with kill switches, target content untrusted with content-sniffing + quarantine, prompt injection cannot modify policy, resource exhaustion bounded, archive/compression guards, research egress SSRF-defended); RELIABILITY (durable outbox with sequences + at-least-once, idempotent consumers, task cancellation on stop, verified backup/restore exercised in CI, graceful shutdown preserved); OPERATIONS (liveness/readiness/metrics endpoints, structured security events with severity floors + auto-incidents, tamper-evident audit chain with verification, runbooks, dependency audit gate, container hardening, config validated + safe defaults); AGENT SAFETY (deterministic emergency stop that survives restarts, engagement kill switch, agent + model circuit breakers with human-only reset, scope versioning with immutable history, credential revocation immediate + audited, suspicious behaviour raises events); EVALUATION (regression benchmarks from Part 7 remain the release gate; model/prompt/tool/knowledge/browser versions tracked per Parts 6-7; the dependency gate blocks on the known fastify advisory until the upgrade passes the Part 7 suite).
 - Honest boundaries: fastify 4 -> 5 upgrade (HIGH advisory in the routing layer) deliberately deferred behind the Part 7 regression gates rather than shipped untested; RLS policies apply to the production aegis_app role (the dev embedded cluster connects as the table owner, which bypasses RLS by design — documented in deployment.md; the security suite exercises the policies with SET ROLE); logical backup replaces pg_dump for portability (production may substitute pg_dump against the same verification contract); webhook security (§78) is documented as not-applicable — the platform accepts no external webhooks.
 - 716 tests green; all gates pass. The eight-part system is complete.
+
+---
+Task ID: 8 (final)
+Agent: main (Super Z)
+Task: Finalize Part 8 delivery
+
+Work Log:
+- Committed 6e31903 (94 files: services/production-hardening + 4 migrations + contracts + routes + web + tests + docs + Docker + ops scripts) and pushed to github.com/CODESLAYER-X86/AutoPen-X86 main; verified on remote via API (remote HEAD 6e31903, main branch).
+- Source archive at download/aegis-platform-part8.tar.gz (same exclusion set as previous parts: node_modules/.git/dist/data/.env/download/tool-results/upload/coverage/skills).
+
+Stage Summary:
+- Part 8 complete and live on the remote. 716 tests green; typecheck/lint/build/smoke all passing; 76 migrations applied. All eight parts of the platform are now delivered.
