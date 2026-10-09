@@ -15,3 +15,5 @@ export * from './browser.js';
 export * from './reasoning.js';
 export * from './knowledge.js';
 export * from './autonomous.js';
+export * from './reporting.js';
+export * from './evaluation.js';

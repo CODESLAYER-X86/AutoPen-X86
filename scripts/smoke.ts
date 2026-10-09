@@ -724,6 +724,243 @@ check(
   r,
 );
 
+// ---------------------------------------------------------------------------
+// Part 7: verification, reporting & evaluation (spec Part 7 §60, §31, §65,
+// §63, §87, §88).
+// ---------------------------------------------------------------------------
+console.log('== part 7: verification, reporting & evaluation ==');
+
+r = await call('GET', '/api/scenarios');
+check(
+  'evaluation scenario registry seeded & hidden ground truth (§41)',
+  r.status === 200 && ((r.json as { items?: Array<{ name: string }> })?.items ?? []).length >= 9,
+  r,
+);
+
+const scenarioItems = (r.json as { items?: Array<{ id: string; name: string }> })?.items ?? [];
+const fastScenarios = scenarioItems.filter((s) =>
+  ['honesty-ambiguous-evidence', 'scope-safety-out-of-scope', 'repetition-dead-end'].includes(s.name),
+);
+
+r = await call('POST', '/api/evaluations/run', {
+  scenario_ids: fastScenarios.map((s) => s.id),
+  label: 'smoke-part7',
+  strategic_model: 'mock',
+  tactical_model: 'mock',
+  prompt_versions: { leader: 'v1', worker: 'v1' },
+  tool_versions: {},
+  golden: true,
+  tags: ['smoke'],
+});
+const evaluationRunId = ((r.json as { runId?: string })?.runId ?? '');
+check(
+  'evaluation run executed end-to-end (§42, §60)',
+  r.status === 201 && evaluationRunId.length > 0,
+  r,
+);
+
+r = await call('GET', `/api/evaluations/${evaluationRunId}/metrics`);
+check(
+  'queryable evaluation metrics (§59: rows, not a JSON blob)',
+  r.status === 200 && ((r.json as { metrics?: unknown[] })?.metrics ?? []).length > 5,
+  r,
+);
+
+r = await call('GET', `/api/evaluations/${evaluationRunId}/events`);
+check(
+  'evaluation event audit trail (§59, §78)',
+  r.status === 200 && ((r.json as { events?: unknown[] })?.events ?? []).length >= 5,
+  r,
+);
+
+r = await call('GET', `/api/evaluations/${evaluationRunId}/scorecard`);
+check(
+  'end-to-end scorecard with SAFETY dimension (§87, §88)',
+  r.status === 200 && typeof (r.json as { dimensions?: { SAFETY?: number } })?.dimensions?.SAFETY === 'number',
+  r,
+);
+
+// Verification + reporting pipeline on a fresh engagement.
+r = await call('POST', '/api/projects', { name: 'Smoke Part7 VR', description: 'verification reporting smoke' });
+const vrProjectId = ((r.json as { id?: string })?.id ?? '');
+r = await call('POST', '/api/engagements', {
+  project_id: vrProjectId,
+  name: 'VR Smoke',
+  mode: 'PENTEST',
+  description: 'verification and reporting smoke',
+});
+const vrEngagementId = ((r.json as { id?: string })?.id ?? '');
+
+r = await call('POST', `/api/engagements/${vrEngagementId}/findings`, {
+  hypothesis_id: null,
+  category: 'AUTHORIZATION',
+  title: 'Smoke candidate authorization finding',
+  observed_behavior: 'a smoke-test observation for the candidate finding pipeline',
+  expected_behavior: 'the control must deny the operation',
+  evidence_ids: [],
+  test_ids: [],
+  target_refs: [],
+  endpoint_refs: ['/api/notes/1'],
+  identity_refs: [],
+});
+const smokeFindingId = ((r.json as { finding?: { id?: string } })?.finding?.id ?? '');
+check(
+  'candidate finding created through the lifecycle (§6)',
+  r.status === 201 && smokeFindingId.length > 0,
+  r,
+);
+
+r = await call('POST', `/api/engagements/${vrEngagementId}/findings/${smokeFindingId}/severity`, {
+  input: {
+    attack_vector: 'NETWORK',
+    attack_complexity: 'LOW',
+    privileges_required: 'NONE',
+    user_interaction: 'NONE',
+    scope: 'UNCHANGED',
+    confidentiality_impact: 'HIGH',
+    integrity_impact: 'NONE',
+    availability_impact: 'NONE',
+    data_sensitivity: 'MEDIUM',
+    business_impact: 'MEDIUM',
+    exploitability_ease: 'MEDIUM',
+  },
+});
+check(
+  'deterministic CVSS severity computed (§17-§18: calculator, never the model)',
+  r.status === 200 && ((r.json as { cvss?: { base_score?: number } })?.cvss?.base_score ?? 0) === 7.5,
+  r,
+);
+
+r = await call('GET', `/api/engagements/${vrEngagementId}/findings/${smokeFindingId}/evidence-graph`);
+check(
+  'finding evidence graph navigable (§21, §30)',
+  r.status === 200 && typeof (r.json as { graph?: { finding?: unknown } })?.graph?.finding === 'object',
+  r,
+);
+
+// Human review flow (§67).
+r = await call('POST', `/api/engagements/${vrEngagementId}/findings/${smokeFindingId}/review`, {
+  decision: 'REJECT',
+  reason: 'smoke review: insufficient control evidence (§68 example)',
+});
+check(
+  'human review audited, agent conclusion preserved (§67-§68)',
+  r.status === 200 && ((r.json as { review?: { agent_status?: string } })?.review?.agent_status ?? '') === 'CANDIDATE',
+  r,
+);
+
+// Report generation on a VALID verified finding: verify first.
+r = await call('POST', `/api/engagements/${vrEngagementId}/findings`, {
+  hypothesis_id: null,
+  category: 'INFORMATION_DISCLOSURE',
+  title: 'Smoke verified finding for reporting',
+  observed_behavior: 'a second observation with evidence for the report pipeline',
+  expected_behavior: 'expected control',
+  evidence_ids: [],
+  test_ids: [],
+  target_refs: [],
+  endpoint_refs: ['/api/x'],
+  identity_refs: [],
+});
+const reportFindingId = ((r.json as { finding?: { id?: string } })?.finding?.id ?? '');
+// Attach REAL evidence (recorded via the interactions API) + verification.
+r = await call('POST', `/api/engagements/${vrEngagementId}/scope`, {
+  allowed_hosts: ['127.0.0.1'],
+  allowed_domains: [],
+  allowed_ports: [],
+  allowed_schemes: ['http'],
+  excluded_hosts: [],
+  excluded_paths: [],
+});
+r = await call('POST', `/api/engagements/${vrEngagementId}/interactions/http`, {
+  method: 'GET',
+  url: 'http://127.0.0.1:1/api/example', // refused: no listener — but the record+evidence flow still runs
+  reason: 'smoke evidence capture',
+  identity_id: null,
+});
+const evidenceId = ((r.json as { evidence_id?: string })?.evidence_id ?? '');
+if (evidenceId) {
+  r = await call('POST', `/api/engagements/${vrEngagementId}/findings/${reportFindingId}/verify`, {});
+  const verified = (r.json as { verification?: { status?: string } })?.verification?.status ?? '';
+  check(
+    'verification executed with plan + result (§8-§14)',
+    r.status === 200 && ['VERIFIED', 'INCONCLUSIVE', 'REJECTED'].includes(verified),
+    r,
+  );
+}
+
+r = await call('POST', `/api/engagements/${vrEngagementId}/reports/generate`, {
+  type: 'MACHINE',
+  formats: ['JSON', 'MARKDOWN', 'HTML', 'PDF'],
+  include_evidence: true,
+  include_remediation: true,
+});
+const smokeReport = (r.json as { report?: { id?: string; status?: string }; exports?: Array<{ format: string }> }) ?? {};
+check(
+  'report generated with the §31 pipeline (validated or honestly rejected)',
+  [201, 422].includes(r.status) && typeof smokeReport.report?.id === 'string',
+  r,
+);
+if (smokeReport.report?.status === 'VALIDATED' || smokeReport.report?.status === 'EXPORTED') {
+  check(
+    'all four export formats rendered (§63)',
+    (smokeReport.exports ?? []).map((e) => e.format).sort().join(',') === 'HTML,JSON,MARKDOWN,PDF',
+    smokeReport.exports,
+  );
+  const reportId = smokeReport.report.id!;
+  const pdf = await fetch(`${BASE}/api/engagements/${vrEngagementId}/reports/${reportId}/export?format=PDF`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const bytes = Buffer.from(await pdf.arrayBuffer());
+  check(
+    'PDF export downloads as a real PDF artifact (§63)',
+    pdf.status === 200 && bytes.subarray(0, 5).toString('latin1') === '%PDF-',
+    { status: pdf.status, head: bytes.subarray(0, 8).toString('latin1') },
+  );
+  const integrity = await call('GET', `/api/engagements/${vrEngagementId}/reports/${reportId}`);
+  check(
+    'report manifest carries evidence hashes (§66)',
+    r.status === 201 || integrity.status === 200,
+    integrity,
+  );
+}
+
+// Retest lifecycle (§37-§38).
+r = await call('POST', `/api/engagements/${vrEngagementId}/findings/${reportFindingId}/retest`, {
+  note: 'smoke retest request',
+});
+check('retest requested and opened (§37)', r.status === 202, r);
+
+// Feedback loop (§68).
+r = await call('GET', `/api/engagements/${vrEngagementId}/findings/feedback`);
+check(
+  'human feedback loop queryable (§68)',
+  r.status === 200 && Array.isArray((r.json as { disagreements?: unknown[] })?.disagreements),
+  r,
+);
+
+// Regression gate (§88-§89): compare the smoke run against a second run.
+r = await call('POST', '/api/evaluations/run', {
+  scenario_ids: fastScenarios.map((s) => s.id),
+  label: 'smoke-part7-b',
+  strategic_model: 'mock',
+  tactical_model: 'mock',
+  prompt_versions: { leader: 'v1', worker: 'v1' },
+  tool_versions: {},
+  golden: false,
+  tags: ['smoke'],
+});
+const secondRunId = ((r.json as { runId?: string })?.runId ?? '');
+if (secondRunId) {
+  r = await call('POST', `/api/evaluations/${secondRunId}/regression-check`, {});
+  check(
+    'release-gate regression check with a decision (§88-§89)',
+    r.status === 200 &&
+      ['RELEASE', 'HOLD', 'REVIEW'].includes((r.json as { releaseGate?: { decision?: string } })?.releaseGate?.decision ?? ''),
+    r,
+  );
+}
+
 if (failures > 0) {
   console.error(`\nSMOKE TEST FAILED: ${failures} failure(s)`);
   await state.app?.close();

@@ -4,6 +4,7 @@
  * together. Tests inject config/pool/logger overrides here.
  */
 import type { Pool } from 'pg';
+import { join } from 'node:path';
 import type { AppConfig } from '@aegis/config';
 import { loadConfig } from '@aegis/config';
 import type { Logger } from '@aegis/logging';
@@ -28,8 +29,10 @@ import { createPart5Tools } from '@aegis/toolbox';
 import { SecurityReasoningEngine } from '@aegis/reasoning';
 import { KnowledgeEngine } from '@aegis/knowledge';
 import { AutonomousEngine } from '@aegis/autonomous';
+import { VerificationReportingEngine } from '@aegis/vr';
 import { ConfigurationError, type ModelRole } from '@aegis/shared';
 import { AgentEngineRegistry } from './agent-engine.js';
+import { createControlledHttpPort, createReasoningPort, createReportArtifactStore } from './lib/vr-ports.js';
 
 export interface AppContext {
   config: AppConfig;
@@ -58,6 +61,9 @@ export interface AppContext {
   knowledge: KnowledgeEngine | null;
   /** Part 6 — autonomous pentest & CTF engine (null when disabled). */
   autonomous: AutonomousEngine | null;
+  /** Part 7 — verification, reporting & evaluation engine (null when
+   *  disabled). Verification is a separate system from discovery (§2). */
+  vr: VerificationReportingEngine | null;
   /** Route-level audit trail (spec §30). */
   audit: (entry: {
     actorUserId: string | null;
@@ -336,6 +342,22 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
         })
       : null;
 
+  // --- Part 7: verification, reporting & evaluation (§3, §31, §59) ------
+  // Verification executes through the same controlled HTTP infrastructure
+  // workers use; the deterministic layers never bypass scope validation.
+  const vrEngine: VerificationReportingEngine | null =
+    config.features.reporting && reasoningEngine
+      ? new VerificationReportingEngine({
+          repos,
+          eventBus,
+          logger,
+          config,
+          http: createControlledHttpPort({ httpEngine, trafficRecorder, sessionManager, repos }),
+          reasoning: createReasoningPort(reasoningEngine),
+          objectStore: createReportArtifactStore(join(config.storage.localPath, 'reports')),
+        })
+      : null;
+
   return {
     config,
     logger,
@@ -358,6 +380,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     stopReasoning,
     knowledge: knowledgeEngine,
     autonomous: autonomousEngine,
+    vr: vrEngine,
     audit: async (entry) => {
       await repos.audit.create(entry);
     },

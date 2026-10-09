@@ -81,6 +81,23 @@ import {
   FlagConditionsRepository,
   ReasoningBranchesRepository,
 } from './autonomous.js';
+import {
+  VerificationPlansRepository,
+  VerificationResultsRepository,
+  ReproductionPlansRepository,
+  SeverityAssessmentsRepository,
+  FindingReviewsRepository,
+  RetestsRepository,
+  ReportsRepository,
+  ReportExportsRepository,
+  EvaluationScenariosRepository,
+  EvaluationRunsRepository,
+  EvaluationMetricsRepository,
+  EvaluationEventsRepository,
+  EvaluationObservedFindingsRepository,
+  EvaluationModelConfigsRepository,
+  RegressionChecksRepository,
+} from './verification-reporting.js';
 
 export interface Repositories {
   users: UsersRepository;
@@ -158,6 +175,22 @@ export interface Repositories {
   flagConditions: FlagConditionsRepository;
   approvals: EngagementApprovalsRepository;
   benchmarkRuns: BenchmarkRunsRepository;
+  // Part 7 — verification, reporting & evaluation repositories.
+  verificationPlans: VerificationPlansRepository;
+  verificationResults: VerificationResultsRepository;
+  reproductionPlans: ReproductionPlansRepository;
+  severityAssessments: SeverityAssessmentsRepository;
+  findingReviews: FindingReviewsRepository;
+  retests: RetestsRepository;
+  reports: ReportsRepository;
+  reportExports: ReportExportsRepository;
+  evaluationScenarios: EvaluationScenariosRepository;
+  evaluationRuns: EvaluationRunsRepository;
+  evaluationMetrics: EvaluationMetricsRepository;
+  evaluationEvents: EvaluationEventsRepository;
+  evaluationObservedFindings: EvaluationObservedFindingsRepository;
+  evaluationModelConfigs: EvaluationModelConfigsRepository;
+  regressionChecks: RegressionChecksRepository;
 }
 
 export function createRepositories(pool: Pool): Repositories {
@@ -232,6 +265,21 @@ export function createRepositories(pool: Pool): Repositories {
     flagConditions: new FlagConditionsRepository(pool),
     approvals: new EngagementApprovalsRepository(pool),
     benchmarkRuns: new BenchmarkRunsRepository(pool),
+    verificationPlans: new VerificationPlansRepository(pool),
+    verificationResults: new VerificationResultsRepository(pool),
+    reproductionPlans: new ReproductionPlansRepository(pool),
+    severityAssessments: new SeverityAssessmentsRepository(pool),
+    findingReviews: new FindingReviewsRepository(pool),
+    retests: new RetestsRepository(pool),
+    reports: new ReportsRepository(pool),
+    reportExports: new ReportExportsRepository(pool),
+    evaluationScenarios: new EvaluationScenariosRepository(pool),
+    evaluationRuns: new EvaluationRunsRepository(pool),
+    evaluationMetrics: new EvaluationMetricsRepository(pool),
+    evaluationEvents: new EvaluationEventsRepository(pool),
+    evaluationObservedFindings: new EvaluationObservedFindingsRepository(pool),
+    evaluationModelConfigs: new EvaluationModelConfigsRepository(pool),
+    regressionChecks: new RegressionChecksRepository(pool),
   };
 }
 
@@ -316,3 +364,20 @@ export {
   FlagConditionsRepository,
   ReasoningBranchesRepository,
 };
+export {
+  VerificationPlansRepository,
+  VerificationResultsRepository,
+  ReproductionPlansRepository,
+  SeverityAssessmentsRepository,
+  FindingReviewsRepository,
+  RetestsRepository,
+  ReportsRepository,
+  ReportExportsRepository,
+  EvaluationScenariosRepository,
+  EvaluationRunsRepository,
+  EvaluationMetricsRepository,
+  EvaluationEventsRepository,
+  EvaluationObservedFindingsRepository,
+  EvaluationModelConfigsRepository,
+  RegressionChecksRepository,
+} from './verification-reporting.js';

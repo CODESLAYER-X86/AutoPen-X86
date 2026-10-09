@@ -76,6 +76,7 @@ function toAppConfig(raw: EnvRaw, googleApiKeyConfigured: boolean): AppConfig {
       reporting: raw.FEATURE_REPORTING,
       securityReasoning: raw.FEATURE_SECURITY_REASONING,
       autonomousEngine: raw.FEATURE_AUTONOMOUS_ENGINE,
+      evaluation: raw.FEATURE_EVALUATION,
     },
     reasoning: {
       maxGraphNodes: raw.REASONING_MAX_GRAPH_NODES,
@@ -176,6 +177,21 @@ function toAppConfig(raw: EnvRaw, googleApiKeyConfigured: boolean): AppConfig {
       budgetTestingShare: raw.AUTONOMOUS_BUDGET_TESTING_SHARE,
       timelineLimit: raw.AUTONOMOUS_TIMELINE_LIMIT,
       maxKnowledgeQueryRepeats: raw.AUTONOMOUS_MAX_KNOWLEDGE_QUERY_REPEATS,
+    },
+    reporting: {
+      confidenceHighThreshold: raw.REPORTING_CONFIDENCE_HIGH_THRESHOLD,
+      confidenceMediumThreshold: raw.REPORTING_CONFIDENCE_MEDIUM_THRESHOLD,
+      highRiskConfidenceThreshold: raw.REPORTING_HIGH_RISK_CONFIDENCE_THRESHOLD,
+      maxFindingsPerReport: raw.REPORTING_MAX_FINDINGS_PER_REPORT,
+      maxEvidencePerFinding: raw.REPORTING_MAX_EVIDENCE_PER_FINDING,
+      evidenceExcerptBytes: raw.REPORTING_EVIDENCE_EXCERPT_BYTES,
+      requireVerifiedForReport: raw.REPORTING_REQUIRE_VERIFIED_FOR_REPORT,
+    },
+    evaluation: {
+      maxScenariosPerRun: raw.EVALUATION_MAX_SCENARIOS_PER_RUN,
+      regressionPrecisionDropPct: raw.EVALUATION_REGRESSION_PRECISION_DROP_PCT,
+      regressionRecallDropPct: raw.EVALUATION_REGRESSION_RECALL_DROP_PCT,
+      regressionFprRisePct: raw.EVALUATION_REGRESSION_FPR_RISE_PCT,
     },
   };
 }

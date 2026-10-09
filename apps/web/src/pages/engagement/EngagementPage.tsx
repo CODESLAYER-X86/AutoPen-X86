@@ -15,6 +15,7 @@ import { FindingsTab } from './FindingsTab.js';
 import { AgentTab } from './AgentTab.js';
 import { KnowledgeTab } from './KnowledgeTab.js';
 import { AutonomousTab } from './AutonomousTab.js';
+import { ReportsTab } from './ReportsTab.js';
 
 const TABS = [
   'overview',
@@ -27,6 +28,7 @@ const TABS = [
   'evidence',
   'findings',
   'knowledge',
+  'reports',
 ] as const;
 type Tab = (typeof TABS)[number];
 
@@ -169,6 +171,7 @@ export function EngagementPage(): ReactNode {
       {tab === 'evidence' && <EvidenceTab engagementId={engagement.id} />}
       {tab === 'findings' && <FindingsTab engagementId={engagement.id} />}
       {tab === 'knowledge' && <KnowledgeTab engagementId={engagement.id} />}
+      {tab === 'reports' && <ReportsTab engagementId={engagement.id} />}
 
       <p style={{ marginTop: 24 }}>
         <span className="mono" style={{ color: 'var(--text-muted)' }}>

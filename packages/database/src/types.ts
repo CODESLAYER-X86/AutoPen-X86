@@ -398,6 +398,320 @@ export interface FindingRecord {
   affected_endpoints: string[];
   affected_identities: string[];
   mode: string;
+  /** Part 7 §38: retest state. */
+  retest_state: 'NOT_RETESTED' | 'OPEN' | 'FIXED' | 'PARTIALLY_FIXED' | 'STILL_PRESENT';
+  /** Part 7 §18: deterministic CVSS representation (null until computed). */
+  cvss: {
+    version: string;
+    vector: string;
+    base_score: number;
+    temporal_score: number | null;
+    environmental_score: number | null;
+    base_severity: string;
+  } | null;
+  severity_source: 'CVSS_CALCULATOR' | 'HUMAN_OVERRIDE';
+  /** Part 7 §19: deduplication key + duplicate linkage. */
+  dedup_key: string | null;
+  duplicate_of: string | null;
+  /** Part 7 §6: structured observed/expected behavior. */
+  observed_behavior: string | null;
+  expected_behavior: string | null;
+}
+
+/** Part 7 §5: auditable finding lifecycle transition. */
+export interface FindingLifecycleEventRecord {
+  id: string;
+  finding_id: string;
+  engagement_id: string;
+  from_status: string;
+  to_status: string;
+  reason: string;
+  actor: 'ENGINE' | 'HUMAN';
+  created_at: Iso8601;
+}
+
+/** Part 7 §70: per-finding evidence quality level. */
+export interface FindingEvidenceQualityRecord {
+  id: string;
+  finding_id: string;
+  engagement_id: string;
+  evidence_id: string;
+  quality: 'RAW' | 'EXTRACTED' | 'CORRELATED' | 'ANALYZED' | 'VERIFIED';
+  note: string | null;
+  created_at: Iso8601;
+}
+
+/** Part 7 §8: verification plan. */
+export interface VerificationPlanRecord {
+  id: string;
+  engagement_id: string;
+  finding_id: string;
+  strategies: string[];
+  controls: string[];
+  expected_result: JsonRecord;
+  required_evidence: Array<{ kind: string; description: string; required: boolean }>;
+  sufficiency: {
+    sufficient: boolean;
+    missing: string[];
+    dimensions: Record<string, boolean>;
+    note: string;
+  };
+  status: 'PLANNED' | 'EXECUTING' | 'COMPLETED' | 'FAILED';
+  result_id: string | null;
+  error: string | null;
+  created_at: Iso8601;
+  completed_at: Iso8601 | null;
+}
+
+/** Part 7 §10: alternative explanation test. */
+export interface AlternativeExplanationRecord {
+  id: string;
+  label: string;
+  description: string;
+  refuted: boolean;
+  refutation: string | null;
+  evidence_ids: string[];
+}
+
+/** Part 7 §14: verification result. */
+export interface VerificationResultRecord {
+  id: string;
+  engagement_id: string;
+  finding_id: string;
+  plan_id: string;
+  status: 'VERIFIED' | 'REJECTED' | 'INCONCLUSIVE';
+  confidence: number;
+  supporting_evidence_ids: string[];
+  contradictory_evidence_ids: string[];
+  reproduced: boolean;
+  alternative_explanations: AlternativeExplanationRecord[];
+  reasoning_summary: string;
+  completed_at: Iso8601;
+}
+
+/** Part 7 §12: controlled reproduction plan. */
+export interface ReproductionPlanRecord {
+  id: string;
+  engagement_id: string;
+  finding_id: string;
+  prerequisites: string[];
+  steps: Array<{ kind: string; reference: string; description: string }>;
+  expected_signals: Array<{ signal: string; source: string }>;
+  created_at: Iso8601;
+}
+
+/** Part 7 §17-§18: severity assessment. */
+export interface SeverityAssessmentRecord {
+  id: string;
+  engagement_id: string;
+  finding_id: string;
+  input: JsonRecord;
+  severity: string;
+  source: 'CVSS_CALCULATOR' | 'HUMAN_OVERRIDE';
+  cvss: {
+    version: string;
+    vector: string;
+    base_score: number;
+    temporal_score: number | null;
+    environmental_score: number | null;
+    base_severity: string;
+  };
+  created_at: Iso8601;
+}
+
+/** Part 7 §67: human review. */
+export interface FindingReviewRecord {
+  id: string;
+  engagement_id: string;
+  finding_id: string;
+  agent_status: string;
+  agent_confidence: number | null;
+  decision: string;
+  reviewer: string;
+  reason: string;
+  agent_human_disagreement: boolean;
+  resulting_status: string;
+  metadata: JsonRecord;
+  created_at: Iso8601;
+}
+
+/** Part 7 §37: retest record. */
+export interface RetestRecord {
+  id: string;
+  engagement_id: string;
+  finding_id: string;
+  status: 'NOT_RETESTED' | 'OPEN' | 'FIXED' | 'PARTIALLY_FIXED' | 'STILL_PRESENT';
+  outcome: 'FIXED' | 'PARTIALLY_FIXED' | 'STILL_PRESENT' | null;
+  verification_id: string | null;
+  note: string | null;
+  requested_by: string;
+  requested_at: Iso8601;
+  completed_at: Iso8601 | null;
+}
+
+/** Part 7 §34: report claim with evidence mapping. */
+export interface ReportClaimRecord {
+  id: string;
+  finding_id: string;
+  text: string;
+  evidence_ids: string[];
+  confidence: number;
+  support: 'SUPPORTED' | 'BROADER_THAN_EVIDENCE' | 'UNSUPPORTED';
+  revision_of: string | null;
+}
+
+/** Part 7 §65: report validation issue. */
+export interface ReportValidationIssueRecord {
+  code: string;
+  message: string;
+  severity: 'ERROR' | 'WARNING';
+  finding_id: string | null;
+  claim_id: string | null;
+}
+
+/** Part 7 §25: generated report. */
+export interface ReportRecord {
+  id: string;
+  engagement_id: string;
+  type: 'EXECUTIVE' | 'TECHNICAL' | 'MACHINE' | 'RETEST' | 'CTF_SOLUTION';
+  status: 'GENERATING' | 'VALIDATED' | 'REJECTED' | 'EXPORTED';
+  version: number;
+  title: string;
+  manifest: {
+    report_hash: string;
+    evidence_hashes: Record<string, string>;
+    finding_ids: string[];
+    generation_config: JsonRecord;
+  } | null;
+  claims: ReportClaimRecord[];
+  validation_issues: ReportValidationIssueRecord[];
+  content: JsonRecord;
+  redactions: Array<{ location: string; rule: string }>;
+  generated_by: string;
+  generated_at: Iso8601;
+}
+
+/** Part 7 §63: rendered export artifact. */
+export interface ReportExportRecord {
+  id: string;
+  report_id: string;
+  engagement_id: string;
+  format: 'JSON' | 'HTML' | 'MARKDOWN' | 'PDF';
+  byte_size: number;
+  sha256: string;
+  content_reference: string;
+  created_at: Iso8601;
+}
+
+/** Part 7 §41: ground-truth finding (hidden from the agent). */
+export interface EvaluationExpectedFindingRecord {
+  id: string;
+  scenario_id: string;
+  endpoint: string;
+  finding_category: string;
+  severity: string;
+  verification_required: boolean;
+  match_tokens: string[];
+  description: string;
+}
+
+/** Part 7 §39: scenario definition. */
+export interface EvaluationScenarioRecord {
+  id: string;
+  name: string;
+  kind: string;
+  description: string;
+  fixture: string;
+  expected_findings: EvaluationExpectedFindingRecord[];
+  expected_observations: string[];
+  expected_hypotheses: string[];
+  expected_stop_condition: string | null;
+  safety_expectations: Array<{ kind: string; detail: string }>;
+  version: number;
+  created_at: Iso8601;
+}
+
+/** Part 7 §59: evaluation run. */
+export interface EvaluationRunRecord {
+  id: string;
+  status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
+  config: JsonRecord;
+  started_by: string;
+  started_at: Iso8601;
+  completed_at: Iso8601 | null;
+  error: string | null;
+  is_golden: boolean;
+  golden_reference: string | null;
+}
+
+/** Part 7 §59: queryable metric row. */
+export interface EvaluationMetricRecord {
+  id: string;
+  run_id: string;
+  scenario_id: string | null;
+  metric: string;
+  scope: string;
+  value: number;
+  unit: string;
+  details: JsonRecord;
+}
+
+/** Part 7 §59: evaluation event row. */
+export interface EvaluationEventRecord {
+  id: string;
+  run_id: string;
+  scenario_id: string | null;
+  type: string;
+  description: string;
+  occurred_at: Iso8601;
+  metadata: JsonRecord;
+}
+
+/** Part 7 §59: observed finding match. */
+export interface EvaluationObservedFindingRecord {
+  id: string;
+  run_id: string;
+  scenario_id: string;
+  expected_finding_id: string | null;
+  finding_id: string;
+  outcome: 'TRUE_POSITIVE' | 'FALSE_POSITIVE' | 'FALSE_NEGATIVE' | 'DUPLICATE';
+  matched_tokens: string[];
+  category: string;
+}
+
+/** Part 7 §59: model config snapshot. */
+export interface EvaluationModelConfigRecord {
+  id: string;
+  run_id: string;
+  label: string;
+  strategic_model: string;
+  tactical_model: string;
+  prompt_versions: JsonRecord;
+  tool_versions: JsonRecord;
+  knowledge_index_version: string | null;
+  budget: JsonRecord;
+  random_seed: number | null;
+  agent_version: string;
+  created_at: Iso8601;
+}
+
+/** Part 7 §88-§89: regression check. */
+export interface RegressionCheckRecord {
+  id: string;
+  run_id: string;
+  baseline_run_id: string;
+  verdict: 'PASS' | 'FAIL' | 'WARN';
+  thresholds: JsonRecord;
+  deltas: JsonRecord;
+  failures: Array<{
+    metric: string;
+    baseline: number;
+    current: number;
+    delta: number;
+    threshold: number;
+    direction: 'MUST_NOT_FALL' | 'MUST_NOT_RISE' | 'MUST_BE_ZERO';
+  }>;
+  checked_at: Iso8601;
 }
 
 export interface AgentMessageRecord {

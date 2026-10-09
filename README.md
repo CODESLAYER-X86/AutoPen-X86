@@ -303,3 +303,66 @@ zod contracts (shared FE/BE) · vitest · typescript-eslint 9
 * 5 new migrations (062-066, 66 total) + task/test/finding column
   extensions; 15+ API routes; ~70 new tests (unit + integration + security
   + evaluation).
+
+## What Part 7 adds (real, runnable)
+
+**Part 7 of 8: verification, reporting & evaluation — epistemic reliability.**
+The system converts autonomous output into verified findings, reproducible
+evidence, deterministic confidence and severity, professional reports and
+agent benchmarks. OBSERVED TRUTH, INFERRED TRUTH and REPORTED TRUTH are never
+conflated (§101).
+
+* **Verification is a separate system** (§2-§14): candidate findings get a
+  deterministic verification plan (strategies, controls, expected result,
+  required evidence) gated by evidence sufficiency (§7). Execution runs REAL
+  reproduction replays through the same controlled, scope-validated HTTP
+  infrastructure workers use (§12), control comparisons over the
+  authorization matrix (§9), and mandatory alternative-explanation testing
+  (§10) — a surviving simpler explanation blocks confirmation. INCONCLUSIVE
+  is a first-class verdict (§74: the agent must know when it does not know).
+* **Finding lifecycle** (§4-§5): CANDIDATE → UNDER_REVIEW →
+  VERIFICATION_PENDING → VERIFYING → VERIFIED with honest INCONCLUSIVE /
+  REJECTED / DUPLICATE / ACCEPTED terminals; every transition guarded and
+  audited; rejected findings are kept as false-positive data (never deleted).
+* **Deterministic scoring** (§15-§18): confidence is a weighted,
+  configurable dimension score (evidence, reproducibility, controls, identity
+  differentials, eliminated alternatives, consistency) with an explicit
+  contradiction penalty — never severity, never a model number. Severity is
+  a CVSS 3.1 calculator (exact FIRST formulas incl. Roundup and scope-changed
+  impact); the model may supply inputs and justification, never scores.
+* **Deduplication** (§19-§20): same root cause + endpoint-shape family merge
+  into one finding with accumulated affected endpoints; duplicates kept.
+* **Reporting pipeline** (§31-§34, §63-§66): normalize → dedup → severity →
+  confidence → evidence selection → redaction → composition → validation →
+  export. Reports are built from STRUCTURED verified facts (never LLM
+  conversations); every claim maps to evidence ids and universal claims are
+  rewritten to the tested scope (§33). Validation REJECTS unredacted
+  secrets, unsupported claims, verified findings without evidence and
+  nonexistent evidence references (hallucination guard, §76). Four
+  dependency-free exporters (JSON §64 schema, HTML, Markdown §28 template,
+  and a real PDF writer) with sha256 integrity manifests.
+* **Human review + retest** (§67-§68, §37-§38): accept/reject/modify/retest/
+  duplicate/severity-override/remediation — audited, never silently
+  overwriting the agent's conclusion; the disagreement feed becomes
+  improvement data. Retests re-verify the SECURITY PROPERTY (never a raw
+  request replay) with FIXED / PARTIALLY_FIXED / STILL_PRESENT outcomes.
+* **Evaluation system** (§39-§92): nine seeded scenarios with hidden ground
+  truth (§41) covering the ENTIRE loop plus safety benchmarks — scope
+  violations (§77: DISCOVERED but NOT EXECUTED), prompt-injection containment
+  (§78), hallucinated-evidence rejection (§76), repetition memory (§79),
+  resource awareness (§80), honesty under ambiguity (§74), CTF flag patterns
+  (§52). Queryable metric rows (precision, recall, FPR, time-to-finding,
+  tokens/requests per finding, duplicate rate — §43-§51), the §87 scorecard,
+  release gates with configurable thresholds (§88-§89), model/prompt/tool
+  comparison (§55-§58) and behavioral golden runs (§90-§91).
+* **6 new migrations** (067-072, 72 total): finding lifecycle + CVSS +
+  dedup columns, verification plans/results, reproduction plans, severity
+  assessments, human reviews, retests, reports/exports and the 7-table
+  evaluation database; model_calls gains prompt_version + context_size.
+* **API**: 24 new routes (findings/verification/review/retest/reports +
+  evaluations with scorecard/regression/compare). **Web**: reports tab
+  (generation + validation issues + format downloads), Part 7 findings view
+  (lifecycle, confidence, CVSS, verify/review/retest actions) and an
+  evaluations page (scenario registry, run execution, scorecard bars).
+* Tests: 675 passing (30 unit + 13 integration + 8 security for Part 7);
+  smoke: 88 checks including the full Part 7 surface.

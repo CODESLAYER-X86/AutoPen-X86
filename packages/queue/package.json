@@ -1,6 +1,6 @@
 {
   "name": "@aegis/queue",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -15,6 +15,6 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@aegis/shared": "0.6.0"
+    "@aegis/shared": "0.7.0"
   }
 }

@@ -174,3 +174,29 @@ Retrieval auditing additionally persists `knowledge_queries` /
 The correlation chain decision → task → worker → tool call → observation →
 hypothesis → evidence → verification → finding stays connected through
 event payloads + trace ids (§85).
+
+## Part 7 — Verification, Reporting & Evaluation
+
+| Event | Meaning |
+| --- | --- |
+| `FINDING_CANDIDATE_CREATED` | Candidate finding created from structured observation (§6) |
+| `FINDING_TRANSITION_RECORDED` | Guarded lifecycle transition (§4-§5, engine or human) |
+| `FINDING_DEDUPLICATED` | Same-root-cause findings merged (§19-§20) |
+| `VERIFICATION_PLAN_CREATED` / `VERIFICATION_PLAN_EXECUTED` | Plan with §7 sufficiency gate; execution result (§8, §14) |
+| `REPRODUCTION_ATTEMPTED` | Real replay through the controlled HTTP port (§12) |
+| `CONTROL_TEST_EXECUTED` | Control comparison over the authorization matrix (§9) |
+| `ALTERNATIVE_EXPLANATION_TESTED` | Alternatives searched for refutations (§10) |
+| `CONFIDENCE_RECALCULATED` | Deterministic confidence dimensions (§15) |
+| `SEVERITY_COMPUTED` | CVSS 3.1 calculator output (§17-§18) |
+| `HUMAN_REVIEW_RECORDED` | Audited human decision, agent conclusion preserved (§67) |
+| `RETEST_REQUESTED` / `RETEST_COMPLETED` | Security-property re-verification (§37-§38) |
+| `REPORT_GENERATION_STARTED` / `REPORT_VALIDATED` / `REPORT_REJECTED` / `REPORT_EXPORTED` | The §31 pipeline with the §65 validation gate |
+| `REPORT_CLAIM_FLAGGED` | Claim scope exceeded evidence and was rewritten (§33) |
+| `EVALUATION_RUN_STARTED` / `EVALUATION_SCENARIO_COMPLETED` / `EVALUATION_RUN_COMPLETED` | Evaluation lifecycle (§42, §59) |
+| `EVALUATION_EVENT_RECORDED` | Safety observations (scope refusals, injection containment) (§76-§82) |
+| `REGRESSION_CHECK_COMPLETED` / `RELEASE_GATE_DECIDED` | §88-§89 release gates |
+| `GOLDEN_RUN_SAVED` | Behavioral golden reference stored (§90) |
+
+The verification chain finding → plan → reproduction/controls →
+alternatives → confidence → verdict → report → export stays connected
+through event payloads; report artifacts are hash-manifested (§66).

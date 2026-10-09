@@ -226,6 +226,35 @@ export const EVENT_TYPES = [
   'COVERAGE_UPDATED',
   'REPLAN_REQUESTED',
   'BENCHMARK_RUN_COMPLETED',
+  // Part 7 — Verification, Reporting & Evaluation event vocabulary (spec
+  // Part 7 §4-§14, §31-§34, §37, §59-§60, §67-§68, §88-§90). Every
+  // verification decision, finding transition, report artifact and
+  // evaluation measurement is observable and auditable.
+  'FINDING_CANDIDATE_CREATED',
+  'FINDING_TRANSITION_RECORDED',
+  'FINDING_DEDUPLICATED',
+  'VERIFICATION_PLAN_CREATED',
+  'VERIFICATION_PLAN_EXECUTED',
+  'REPRODUCTION_ATTEMPTED',
+  'CONTROL_TEST_EXECUTED',
+  'ALTERNATIVE_EXPLANATION_TESTED',
+  'CONFIDENCE_RECALCULATED',
+  'SEVERITY_COMPUTED',
+  'HUMAN_REVIEW_RECORDED',
+  'RETEST_REQUESTED',
+  'RETEST_COMPLETED',
+  'REPORT_GENERATION_STARTED',
+  'REPORT_VALIDATED',
+  'REPORT_EXPORTED',
+  'REPORT_REJECTED',
+  'REPORT_CLAIM_FLAGGED',
+  'EVALUATION_RUN_STARTED',
+  'EVALUATION_SCENARIO_COMPLETED',
+  'EVALUATION_RUN_COMPLETED',
+  'EVALUATION_EVENT_RECORDED',
+  'REGRESSION_CHECK_COMPLETED',
+  'RELEASE_GATE_DECIDED',
+  'GOLDEN_RUN_SAVED',
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -580,7 +609,7 @@ export const SESSION_EXPIRATION_SIGNALS = [
 ] as const;
 export type SessionExpirationSignal = (typeof SESSION_EXPIRATION_SIGNALS)[number];
 
-export const PLATFORM_VERSION = '0.6.0-part6';
+export const PLATFORM_VERSION = '0.7.0-part7';
 export const PLATFORM_NAME = 'Aegis Platform';
 
 // ---------------------------------------------------------------------------
@@ -1171,16 +1200,24 @@ export type EngineRiskLevel = (typeof ENGINE_RISK_LEVELS)[number];
 export const RECOVERY_POLICIES = ['SAFE_RETRY', 'RESUME', 'MARK_FAILED', 'RECOMPILE'] as const;
 export type RecoveryPolicy = (typeof RECOVERY_POLICIES)[number];
 
-/** Extended finding lifecycle (Part 6 §58, replacing the Part 2 §55 enum):
- * CANDIDATE findings require verification evidence before becoming VERIFIED.
- * PROPOSED/CONFIRMED remain as the Part 2 promotion-ladder aliases written by
- * hypothesis promotion. */
+/** Extended finding lifecycle (Part 6 §58 + Part 7 §4-§5): CANDIDATE ->
+ * UNDER_REVIEW -> VERIFICATION_PENDING -> VERIFYING -> VERIFIED, with honest
+ * alternative outcomes (INCONCLUSIVE / REJECTED / DUPLICATE) and the
+ * human-reviewed ACCEPTED terminal state (§5). PROPOSED/CONFIRMED remain as
+ * the Part 2 promotion-ladder aliases written by hypothesis promotion.
+ * Rejected findings are NEVER deleted — they are false-positive data (§4). */
 export const FINDING_STATUSES = [
   'PROPOSED',
   'CONFIRMED',
   'REJECTED',
   'CANDIDATE',
+  'UNDER_REVIEW',
+  'VERIFICATION_PENDING',
+  'VERIFYING',
   'VERIFIED',
+  'INCONCLUSIVE',
+  'DUPLICATE',
+  'ACCEPTED',
 ] as const;
 export type FindingStatus = (typeof FINDING_STATUSES)[number];
 /** Finding confidence levels (Part 6 §28). Confidence is NOT severity. */
@@ -1194,3 +1231,155 @@ export const FINDING_CATEGORIES = [
   'UNKNOWN',
 ] as const;
 export type FindingCategory = (typeof FINDING_CATEGORIES)[number];
+
+// ---------------------------------------------------------------------------
+// Part 7 — Verification, Reporting & Evaluation domain enums (spec Part 7
+// §4-§5, §8-§9, §24, §37-§38, §25, §59-§60, §63, §67, §70-§71, §75, §87-§92).
+// ---------------------------------------------------------------------------
+
+/** Verification strategies (Part 7 §9). Reusable, deterministic comparison
+ *  patterns; the planner selects per finding category. */
+export const VERIFICATION_STRATEGIES = [
+  'REPRODUCTION',
+  'CONTROL_COMPARISON',
+  'IDENTITY_DIFFERENTIAL',
+  'AUTHENTICATION_DIFFERENTIAL',
+  'STATE_DIFFERENTIAL',
+  'SOURCE_CONFIRMATION',
+  'EVIDENCE_REVIEW',
+] as const;
+export type VerificationStrategy = (typeof VERIFICATION_STRATEGIES)[number];
+
+/** Verification plan lifecycle (Part 7 §8, §14). */
+export const VERIFICATION_PLAN_STATUSES = [
+  'PLANNED',
+  'EXECUTING',
+  'COMPLETED',
+  'FAILED',
+] as const;
+export type VerificationPlanStatus = (typeof VERIFICATION_PLAN_STATUSES)[number];
+
+/** Verification result verdicts (Part 7 §14, §75). CONFIRMED/LIKELY/
+ * POSSIBLE/INCONCLUSIVE/REJECTED are the INTERNAL uncertainty vocabulary;
+ * the reported terminal status remains VERIFIED / NOT_VERIFIED (§75). */
+export const VERIFICATION_VERDICTS = [
+  'VERIFIED',
+  'REJECTED',
+  'INCONCLUSIVE',
+] as const;
+export type VerificationVerdict = (typeof VERIFICATION_VERDICTS)[number];
+
+export const UNCERTAINTY_LEVELS = [
+  'CONFIRMED',
+  'LIKELY',
+  'POSSIBLE',
+  'INCONCLUSIVE',
+  'REJECTED',
+] as const;
+export type UncertaintyLevel = (typeof UNCERTAINTY_LEVELS)[number];
+
+/** Evidence quality levels (Part 7 §70). Not all evidence is equally
+ *  authoritative: RAW -> EXTRACTED -> CORRELATED -> ANALYZED -> VERIFIED. */
+export const EVIDENCE_QUALITY_LEVELS = [
+  'RAW',
+  'EXTRACTED',
+  'CORRELATED',
+  'ANALYZED',
+  'VERIFIED',
+] as const;
+export type EvidenceQualityLevel = (typeof EVIDENCE_QUALITY_LEVELS)[number];
+
+/** Human review decisions (Part 7 §67). Auditable, never silent overwrite. */
+export const HUMAN_REVIEW_DECISIONS = [
+  'ACCEPT',
+  'REJECT',
+  'MODIFY',
+  'REQUEST_RETEST',
+  'MARK_DUPLICATE',
+  'CHANGE_SEVERITY',
+  'ADD_REMEDIATION',
+] as const;
+export type HumanReviewDecision = (typeof HUMAN_REVIEW_DECISIONS)[number];
+
+/** Retest lifecycle (Part 7 §37-§38). The security PROPERTY is re-verified,
+ *  not just the original request replayed. */
+export const RETEST_STATUSES = [
+  'NOT_RETESTED',
+  'OPEN',
+  'FIXED',
+  'PARTIALLY_FIXED',
+  'STILL_PRESENT',
+] as const;
+export const RETEST_OUTCOMES = ['FIXED', 'PARTIALLY_FIXED', 'STILL_PRESENT'] as const;
+export type RetestOutcome = (typeof RETEST_OUTCOMES)[number];
+
+/** Report lifecycle (Part 7 §31, §65). Validation failure REJECTS a report
+ *  before it can be exported. */
+export const REPORT_STATUSES = [
+  'GENERATING',
+  'VALIDATED',
+  'REJECTED',
+  'EXPORTED',
+] as const;
+export type ReportStatus = (typeof REPORT_STATUSES)[number];
+
+/** Report formats (Part 7 §63, §25). */
+export const REPORT_FORMATS = ['JSON', 'HTML', 'MARKDOWN', 'PDF'] as const;
+export type ReportFormat = (typeof REPORT_FORMATS)[number];
+
+/** Report audiences (Part 7 §25-§26, §73). Executive reports never include
+ *  unnecessary exploit detail; the technical evidence package is separate. */
+export const REPORT_TYPES = ['EXECUTIVE', 'TECHNICAL', 'MACHINE', 'RETEST', 'CTF_SOLUTION'] as const;
+export type ReportType = (typeof REPORT_TYPES)[number];
+
+/** Evaluation run lifecycle (Part 7 §42, §59-§60). */
+export const EVALUATION_RUN_STATUSES = [
+  'RUNNING',
+  'COMPLETED',
+  'FAILED',
+  'STOPPED',
+] as const;
+export type EvaluationRunStatus = (typeof EVALUATION_RUN_STATUSES)[number];
+
+/** Benchmark scenario families (Part 7 §40, §76-§82, §52). */
+export const BENCHMARK_SCENARIO_KINDS = [
+  'RECON',
+  'AUTHENTICATION',
+  'AUTHORIZATION',
+  'SESSION',
+  'INPUT_VALIDATION',
+  'BUSINESS_LOGIC',
+  'WORKFLOW_STATE',
+  'CLIENT_SIDE',
+  'API',
+  'WEBSOCKET',
+  'SOURCE_ANALYSIS',
+  'MULTI_IDENTITY',
+  'DIFFERENTIAL',
+  'CTF_REASONING',
+  'HALLUCINATION',
+  'SCOPE_SAFETY',
+  'PROMPT_INJECTION',
+  'REPETITION',
+  'RESOURCE_AWARENESS',
+  'REPLANNING',
+  'CONTRADICTORY_EVIDENCE',
+  'HONESTY',
+] as const;
+export type BenchmarkScenarioKind = (typeof BENCHMARK_SCENARIO_KINDS)[number];
+
+/** Regression / release-gate verdicts (Part 7 §88-§89). */
+export const REGRESSION_VERDICTS = ['PASS', 'FAIL', 'WARN'] as const;
+export type RegressionVerdict = (typeof REGRESSION_VERDICTS)[number];
+
+/** Scorecard dimensions (Part 7 §87). */
+export const SCORECARD_DIMENSIONS = [
+  'RECON',
+  'HYPOTHESIS',
+  'TESTING',
+  'VERIFICATION',
+  'REPORTING',
+  'EFFICIENCY',
+  'SAFETY',
+] as const;
+export type ScorecardDimension = (typeof SCORECARD_DIMENSIONS)[number];

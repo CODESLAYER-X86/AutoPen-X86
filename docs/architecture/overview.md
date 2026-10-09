@@ -502,3 +502,88 @@ services/autonomous-engine/src/
   truth (lab IDOR + negative control; four CTF challenge types) measuring
   time-to-finding, false-positive rate, duplicate rate, per-finding
   efficiency and CTF solve rate.
+
+## Part 7 — Verification, Reporting & Evaluation
+
+The epistemic reliability layer: OBSERVED TRUTH, INFERRED TRUTH and
+REPORTED TRUTH are never conflated (§101). `services/verification-reporting`
+(`@aegis/vr`) converts autonomous output into verified findings, reproducible
+evidence, confidence assessments, professional reports and agent benchmarks.
+
+**Architecture:**
+
+```text
+AUTONOMOUS ENGINE
+        │
+        ▼
+CANDIDATE FINDING ── finding-lifecycle (§4-§5, guarded + audited)
+        │
+        ▼
+VERIFICATION PLANNER (§8: strategies, controls, expected result, §7 sufficiency gate)
+        │
+   ┌────┼────────────────┐
+   ▼    ▼                ▼
+REPRODUCTION   CONTROL     ALTERNATIVE
+(§12, real     TESTS (§9,  EXPLANATIONS (§10)
+ replays       authz-matrix
+ through the   differentials)
+ controlled
+ HTTP port)
+   │    │                │
+   └────┼────────────────┘
+        ▼
+EVIDENCE GRAPH (§21-§23, immutable + hashed)
+        ▼
+CONFIDENCE ENGINE (§15-§16, deterministic, ≠ severity)
+        ▼
+SEVERITY ENGINE (§17-§18, CVSS 3.1 calculator)
+        ▼
+FINDING SERVICE + DEDUPLICATION (§6, §19-§20)
+        │
+   ┌────┴─────────────┐
+   ▼                  ▼
+HUMAN REVIEW      REPORT BUILDER (§31: normalize → dedup → severity →
+(§67-§68,          confidence → evidence selection → redaction →
+ audited, never    composition → validation → export)
+ silent overwrite)     │
+   │                  ▼
+   ▼            HTML / Markdown / JSON / PDF (§63, hash-manifested §66)
+FINAL FINDING
+                     │
+                     ▼
+              EVALUATION ENGINE (§39-§92: scenarios with hidden ground
+              truth, precision/recall/FPR, safety benchmarks, scorecard,
+              regression gates, golden runs)
+```
+
+**Key properties:**
+
+- **Verification is a separate system** (§2) — the verifier that confirms a
+  hypothesis is not the reasoning that created it; controls, alternative
+  explanations and reproduction are searched for REFUTATIONS, not
+  confirmations.
+- **Never "LLM says vulnerability → finding"** — VERIFIED requires the
+  deterministic policy (§71: class-specific rules; §72: stricter gate for
+  high-risk findings), eliminated alternatives, and evidence-sufficiency.
+  INCONCLUSIVE is a first-class verdict (§74: know when you do not know).
+- **Confidence ≠ severity** (§16, §18) — the confidence engine scores
+  evidence dimensions; the severity engine computes CVSS 3.1 deterministically
+  (model may supply inputs, never scores). Contradictory evidence DECREASES
+  confidence (§82).
+- **Deduplication is deterministic** (§19-§20) — same root cause + endpoint
+  shape family merge into one finding with accumulated endpoints; duplicates
+  are kept (never deleted) as false-positive data.
+- **Report safety** (§24, §65, §73) — deterministic redaction (cookies,
+  bearer tokens, JWTs, API keys, emails, private keys) before composition;
+  validation REJECTS reports with unredacted secrets, unsupported claims,
+  verified findings without evidence or nonexistent evidence references
+  (hallucination guard, §76). Executive reports exclude exploit detail.
+- **Retesting re-verifies the security property** (§37) — never a raw request
+  replay; outcomes FIXED / PARTIALLY_FIXED / STILL_PRESENT.
+- **Evaluation is queryable** (§59) — runs, scenarios, expected/observed
+  findings, metric rows, events and model-config snapshots are database rows,
+  never only a final JSON blob; scorecard (§87) + release gates (§88-§89) +
+  golden runs (§90, behavioral outcomes only, §91).
+- **Local fixtures only** — evaluation scenarios boot the in-service
+  deterministic fixture (never external targets); out-of-scope hosts are
+  DISCOVERED but NOT EXECUTED (§77), prompt injection stays inert (§78).

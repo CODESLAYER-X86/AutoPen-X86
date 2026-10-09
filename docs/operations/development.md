@@ -286,3 +286,29 @@ verification machinery). When off, all `/autonomous/*` routes return honest
 duplicate-test rate, coverage, requests/tokens per finding, CTF solve rate.
 `GET /api/benchmarks` lists definitions; `GET /api/benchmarks/:name/runs`
 shows history.
+
+## Part 7 — verification, reporting & evaluation
+
+- `FEATURE_REPORTING` (default `true`) enables the Part 7 engine;
+  `FEATURE_EVALUATION` (default `true`) gates the evaluation subsystem flag.
+  Disabled deployments answer `501` honestly.
+- Verification knobs: `REPORTING_CONFIDENCE_HIGH_THRESHOLD`,
+  `REPORTING_CONFIDENCE_MEDIUM_THRESHOLD`,
+  `REPORTING_HIGH_RISK_CONFIDENCE_THRESHOLD` (§72 gate),
+  `REPORTING_MAX_FINDINGS_PER_REPORT`, `REPORTING_MAX_EVIDENCE_PER_FINDING`,
+  `REPORTING_EVIDENCE_EXCERPT_BYTES`, `REPORTING_REQUIRE_VERIFIED_FOR_REPORT`.
+- Evaluation knobs: `EVALUATION_MAX_SCENARIOS_PER_RUN`,
+  `EVALUATION_REGRESSION_PRECISION_DROP_PCT`,
+  `EVALUATION_REGRESSION_RECALL_DROP_PCT`,
+  `EVALUATION_REGRESSION_FPR_RISE_PCT` (§89 thresholds).
+- Report artifacts render into `STORAGE_LOCAL_PATH/reports/` (keyed,
+  mode 0640); integrity manifests carry report + evidence sha256 hashes (§66).
+- Evaluation runs boot the in-process LOCAL fixture (never external
+  targets); the runner drives traffic through the same scope-validated HTTP
+  engine workers use.
+- Tests: unit `tests/unit/part7-vr.test.ts` (deterministic engines + all
+  exporters), integration `tests/integration/part7-vr.test.ts` (full
+  pipeline over real lab traffic + evaluation runs + regression checks),
+  security `tests/security/part7-vr-security.test.ts` (redaction boundary,
+  hallucination rejection, cross-tenant 404s, 501 honesty, scope-safety
+  events). The smoke script exercises the Part 7 API surface end to end.

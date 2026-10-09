@@ -94,7 +94,28 @@ export type IdPrefix =
   | 'CTF' // CTF challenge context (per engagement)
   | 'FLC' // flag condition
   | 'APV' // human approval record
-  | 'BMK'; // benchmark run
+  | 'BMK' // benchmark run
+  // Part 7 prefixes (verification, reporting & evaluation).
+  | 'VRP' // verification plan
+  | 'VRR' // verification result (Part 7 record)
+  | 'RPN' // reproduction plan
+  | 'CTL' // control test record
+  | 'AEX' // alternative explanation test record
+  | 'RPR' // report (generated artifact)
+  | 'CLM' // report claim
+  | 'RVW' // human finding review
+  | 'RTS' // retest record
+  | 'SVS' // severity assessment (CVSS)
+  | 'EVR' // evaluation run
+  | 'EVS' // evaluation scenario instance
+  | 'EXF' // evaluation expected finding (ground truth)
+  | 'EOF' // evaluation observed finding
+  | 'EVM' // evaluation metric row
+  | 'EVE' // evaluation event
+  | 'EMC' // evaluation model config snapshot
+  | 'GRN' // golden run reference
+  | 'FLE' // finding lifecycle event
+  | 'FEQ'; // finding evidence quality row
 
 /** Matches `<PREFIX>_<16..32 base32 chars>` and is case sensitive. */
 export const ID_PATTERN = /^[A-Z]{2,6}_[A-Z2-7]{16,32}$/;

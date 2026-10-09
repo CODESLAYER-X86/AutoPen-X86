@@ -173,3 +173,20 @@ persisted outbound agent message for secret values and secret references.
 | Uncontrolled active discovery / brute force (§11) | Bounded known-path validation with reason/scope/gain/cost/risk per task; rate limits at the HTTP engine |
 | Runaway autonomous loop (§40-§42, §50) | Anti-loop fingerprints, retry thresholds, budget thresholds with 80% warnings, replan budget, six stop conditions — all observable events |
 | Unauditable autonomous behavior (§86-§87) | Every phase transition, control action, approval and stop condition writes an audit row + event; the live timeline renders the full chain (§53) |
+
+## Part 7 — Verification, Reporting & Evaluation
+
+| Threat | Mitigation |
+| --- | --- |
+| Model declares a vulnerability without evidence ("LLM says → finding", §1) | Verification is a separate system (§2): deterministic policy (§71-§72), evidence-sufficiency gate (§7), alternative-explanation elimination (§10); VERIFIED requires verification records (§65) |
+| Hallucinated evidence references in reports (§76) | The report validator REJECTS findings/claims referencing nonexistent evidence ids; evaluation scenarios assert the rejection |
+| Credential / secret leakage into reports (§24) | Deterministic redaction before composition (cookies, bearer/basic auth, JWTs, API keys, session ids, emails, private keys); validation refuses export on any surviving secret pattern; original evidence stays hashed + immutable (§23) |
+| Unsupported generalizations in report claims (§33) | Claim validator flags BROADER_THAN_EVIDENCE and rewrites to the tested scope; every claim maps to evidence ids (§34) |
+| Confidence inflation from severity (§16) / contradictory evidence ignored (§82) | Confidence dimensions exclude severity entirely; contradictions apply an explicit penalty |
+| Human review silently overwriting agent conclusions (§67) | Reviews store agent_status + decision + resulting status; lifecycle events record the human actor; disagreement feeds the §68 improvement loop |
+| Cross-tenant access to findings/reports/evaluations | Ownership guards on every route (404 on foreign ids); evaluation runs record the owner |
+| Report tampering after generation (§66) | Manifest with report + evidence sha256 hashes; integrity verification re-checks stored hashes |
+| Evaluation scenarios touching external targets (§39) | Runs boot the LOCAL in-process fixture only; out-of-scope probes are refused by the network policy and recorded as DISCOVERED-but-NOT-EXECUTED (§77) |
+| Prompt injection through evaluation fixture content (§78) | Injection text stays untrusted data; scope/policy rows are verified unchanged after ingestion |
+| Rejected reports being exported anyway (§65) | Export route refuses REJECTED reports; validation gate runs before any artifact is written |
+| False-positive regressions shipping as "improvements" (§88) | Release gates: precision/recall drop thresholds, FPR rise thresholds, zero scope violations, zero unsupported claims — all configurable (§89) |

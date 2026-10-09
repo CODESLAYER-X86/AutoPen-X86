@@ -1,6 +1,6 @@
 {
   "name": "@aegis/worker-runtime",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -15,13 +15,13 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@aegis/contracts": "0.6.0",
-    "@aegis/database": "0.6.0",
-    "@aegis/events": "0.6.0",
-    "@aegis/logging": "0.6.0",
-    "@aegis/model-runtime": "0.6.0",
-    "@aegis/security": "0.6.0",
-    "@aegis/shared": "0.6.0",
-    "@aegis/tools": "0.6.0"
+    "@aegis/contracts": "0.7.0",
+    "@aegis/database": "0.7.0",
+    "@aegis/events": "0.7.0",
+    "@aegis/logging": "0.7.0",
+    "@aegis/model-runtime": "0.7.0",
+    "@aegis/security": "0.7.0",
+    "@aegis/shared": "0.7.0",
+    "@aegis/tools": "0.7.0"
   }
 }

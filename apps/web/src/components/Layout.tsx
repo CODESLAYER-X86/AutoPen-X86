@@ -24,6 +24,9 @@ export function Layout(): ReactNode {
         <NavLink to="/projects" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
           Projects
         </NavLink>
+        <NavLink to="/evaluations" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+          <span>Evaluations</span>
+        </NavLink>
         <NavLink to="/settings" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
           Settings
         </NavLink>

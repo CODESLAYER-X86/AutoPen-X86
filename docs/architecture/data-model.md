@@ -258,3 +258,35 @@ Part 6 also EXTENDS existing tables:
   (§28 — confidence is NOT severity), impact, remediation, verification_ids,
   target_refs, affected_endpoints/identities, mode; statuses extended with
   CANDIDATE/VERIFIED (§58: no VERIFIED without verification evidence).
+
+## Part 7 — Verification, Reporting & Evaluation
+
+**Migrations 067-072.** Findings gain the full Part 7 lifecycle (§4-§5:
+CANDIDATE → UNDER_REVIEW → VERIFICATION_PENDING → VERIFYING → VERIFIED with
+honest INCONCLUSIVE / REJECTED / DUPLICATE / ACCEPTED alternatives; rejected
+findings are never deleted — false-positive data), the CVSS representation
+(§18: version, vector, base/temporal/environmental scores, source =
+CVSS_CALCULATOR | HUMAN_OVERRIDE — separate from confidence), dedup_key +
+duplicate_of linkage (§19-§20), retest_state (§38) and structured
+observed/expected behavior.
+
+| Table | Purpose |
+| --- | --- |
+| `finding_lifecycle_events` | Audited lifecycle transitions, engine AND human (§5, §67) |
+| `finding_evidence_quality` | Per-finding evidence quality levels RAW→VERIFIED (§70) |
+| `verification_plans` | Strategies, controls, expected result, required evidence + the §7 sufficiency snapshot (§8) |
+| `verification_results` | Verdict, confidence, supporting AND contradictory evidence, tested alternatives (§10, §14) |
+| `reproduction_plans` | Controlled step REFERENCES — never executable scripts (§12) |
+| `severity_assessments` | CVSS calculator inputs and outputs, audited (§17) |
+| `finding_reviews` | agent_status + human decision + resulting status; disagreement signal (§67-§68) |
+| `retests` | §37 lifecycle: OPEN → FIXED / PARTIALLY_FIXED / STILL_PRESENT |
+| `reports` / `report_exports` | §31 pipeline artifacts: claims, validation issues, redaction records, §66 manifest; per-format rendered artifacts (content-addressed sha256) |
+| `evaluation_runs` | §42, §59 runs with reproducibility snapshots (§58) and golden flags (§90) |
+| `evaluation_scenarios` + `evaluation_expected_findings` | §39-§41 scenario registry with hidden ground truth |
+| `evaluation_observed_findings` | §47 TP/FP/FN/DUPLICATE matches |
+| `evaluation_metrics` / `evaluation_events` | §59 queryable metric rows and the run audit chain |
+| `evaluation_model_configs` | §55-§58 model/prompt/tool comparison snapshots |
+| `evaluation_regression_checks` | §88-§89 release gates with configurable thresholds |
+
+`model_calls` gains `prompt_version` + `context_size` (§83: exact quota
+analysis and prompt-version evaluation).

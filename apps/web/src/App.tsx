@@ -7,6 +7,7 @@ import { ProjectsPage } from './pages/ProjectsPage.js';
 import { ProjectPage } from './pages/ProjectPage.js';
 import { EngagementPage } from './pages/engagement/EngagementPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { EvaluationsPage } from './pages/EvaluationsPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
 import type { ReactNode } from 'react';
 
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       { path: '/projects', element: <ProjectsPage /> },
       { path: '/projects/:projectId', element: <ProjectPage /> },
       { path: '/engagements/:engagementId', element: <EngagementPage /> },
+      { path: '/evaluations', element: <EvaluationsPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

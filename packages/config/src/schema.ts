@@ -82,7 +82,13 @@ export const EnvSchema = z.object({
   FEATURE_REPORTING: z
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
-    .default(false),
+    // Part 7 implements verification, reporting and evaluation — enabled by
+    // default; operators can opt out per deployment.
+    .default(true),
+  FEATURE_EVALUATION: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
+    .default(true),
   // Part 4: the security reasoning engine is implemented — enabled by
   // default; operators can opt out per deployment.
   FEATURE_SECURITY_REASONING: z
@@ -188,6 +194,23 @@ export const EnvSchema = z.object({
   AUTONOMOUS_BUDGET_TESTING_SHARE: z.coerce.number().min(0.05).max(0.9).default(0.45),
   AUTONOMOUS_TIMELINE_LIMIT: positiveInt.default(200),
   AUTONOMOUS_MAX_KNOWLEDGE_QUERY_REPEATS: positiveInt.default(2),
+
+  // --- Part 7: Verification, Reporting & Evaluation tunables (spec Part 7
+  // §15, §24, §29, §33, §65, §71-§72, §89) ---
+  REPORTING_CONFIDENCE_HIGH_THRESHOLD: z.coerce.number().min(0.5).max(0.99).default(0.75),
+  REPORTING_CONFIDENCE_MEDIUM_THRESHOLD: z.coerce.number().min(0.1).max(0.7).default(0.45),
+  REPORTING_HIGH_RISK_CONFIDENCE_THRESHOLD: z.coerce.number().min(0.5).max(0.99).default(0.8),
+  REPORTING_MAX_FINDINGS_PER_REPORT: positiveInt.default(500),
+  REPORTING_MAX_EVIDENCE_PER_FINDING: positiveInt.default(6),
+  REPORTING_EVIDENCE_EXCERPT_BYTES: positiveInt.default(600),
+  REPORTING_REQUIRE_VERIFIED_FOR_REPORT: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
+    .default(true),
+  EVALUATION_MAX_SCENARIOS_PER_RUN: positiveInt.default(32),
+  EVALUATION_REGRESSION_PRECISION_DROP_PCT: z.coerce.number().min(0).max(50).default(5),
+  EVALUATION_REGRESSION_RECALL_DROP_PCT: z.coerce.number().min(0).max(50).default(10),
+  EVALUATION_REGRESSION_FPR_RISE_PCT: z.coerce.number().min(0).max(50).default(3),
 });
 
 export type EnvRaw = z.infer<typeof EnvSchema>;
@@ -221,6 +244,7 @@ export interface AppConfig {
     reporting: boolean;
     securityReasoning: boolean;
     autonomousEngine: boolean;
+    evaluation: boolean;
   };
   /** Part 4: reasoning engine resource limits (spec §113). */
   reasoning: {
@@ -322,5 +346,21 @@ export interface AppConfig {
     budgetTestingShare: number;
     timelineLimit: number;
     maxKnowledgeQueryRepeats: number;
+  };
+  /** Part 7: verification, reporting & evaluation tunables. */
+  reporting: {
+    confidenceHighThreshold: number;
+    confidenceMediumThreshold: number;
+    highRiskConfidenceThreshold: number;
+    maxFindingsPerReport: number;
+    maxEvidencePerFinding: number;
+    evidenceExcerptBytes: number;
+    requireVerifiedForReport: boolean;
+  };
+  evaluation: {
+    maxScenariosPerRun: number;
+    regressionPrecisionDropPct: number;
+    regressionRecallDropPct: number;
+    regressionFprRisePct: number;
   };
 }

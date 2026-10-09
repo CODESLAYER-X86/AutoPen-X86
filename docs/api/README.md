@@ -204,3 +204,33 @@ feature is off (honest degradation).
 | GET | `/api/engagements/:id/ctf` | Context + clues + flag conditions |
 | GET | `/api/benchmarks` | Benchmark definitions (§79) |
 | GET | `/api/benchmarks/:name/runs` | Persisted benchmark runs with metrics |
+
+# Part 7 — Verification, reporting & evaluation routes (spec Part 7 §60, §67, §31)
+
+All routes are ownership-guarded; `501 VR_ENGINE_DISABLED` when
+`FEATURE_REPORTING=false` (honest degradation).
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/engagements/:id/findings` | Create a candidate finding from structured observation (§6) |
+| GET | `/api/engagements/:id/findings/:findingId` | Detail + lifecycle events + evidence quality + verifications + reviews |
+| GET | `/api/engagements/:id/findings/:findingId/evidence-graph` | Finding → verification → tests → observations → evidence → requests (§21, §30) |
+| POST | `/api/engagements/:id/findings/:findingId/verify` | Execute the verification plan (reproduction + controls + alternatives, §8-§14) |
+| POST | `/api/engagements/:id/findings/:findingId/severity` | Deterministic CVSS 3.1 computation (§17-§18) |
+| POST | `/api/engagements/:id/findings/:findingId/deduplicate` | Deterministic same-root-cause merge (§19-§20) |
+| POST | `/api/engagements/:id/findings/:findingId/review` | Human review: accept/reject/modify/retest/duplicate/severity/remediation (§67-§68) |
+| POST | `/api/engagements/:id/findings/:findingId/retest` | Open a retest (§37, 202) |
+| POST | `/api/engagements/:id/findings/:findingId/retest/run` | Execute the retest (same verification strategy; outcome FIXED/PARTIALLY_FIXED/STILL_PRESENT) |
+| GET | `/api/engagements/:id/findings/feedback` | §68 disagreement feed (agent vs human conclusions) |
+| POST | `/api/engagements/:id/reports/generate` | Full §31 pipeline; 422 + REJECTED when validation fails (§65) |
+| GET | `/api/engagements/:id/reports` | Report list |
+| GET | `/api/engagements/:id/reports/:reportId` | Report detail + exports |
+| GET | `/api/engagements/:id/reports/:reportId/export?format=` | Artifact download (JSON/HTML/MARKDOWN/PDF, sha256 header, §63) |
+| GET | `/api/scenarios` | Scenario registry (ground-truth match tokens hidden, §41) |
+| POST | `/api/evaluations/run` | Execute an evaluation run (local fixtures only, §42, §60) |
+| GET | `/api/evaluations` | Run list |
+| GET | `/api/evaluations/:id` / `:id/metrics` / `:id/events` / `:id/findings` | Queryable run data (§59) |
+| GET | `/api/evaluations/:id/scorecard` | End-to-end scorecard (§87) |
+| POST | `/api/evaluations/:id/regression-check` | Release-gate comparison (§88-§89) |
+| POST | `/api/evaluations/compare` | A/B comparison of runs (§55) |
+| GET | `/api/evaluations/:id/golden-comparison` | Behavioral golden-run comparison (§90-§91) |
