@@ -81,6 +81,12 @@ export const EnvSchema = z.object({
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
     .default(false),
+  // Part 4: the security reasoning engine is implemented — enabled by
+  // default; operators can opt out per deployment.
+  FEATURE_SECURITY_REASONING: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
+    .default(true),
 
   // --- Part 2: Agent Operating System tunables (spec §37-§40, §54, §66) ---
   AGENT_MAX_CYCLES: positiveInt.default(40),
@@ -106,6 +112,17 @@ export const EnvSchema = z.object({
   AGENT_ENGAGEMENT_MAX_MODEL_TOKENS: z.coerce.number().int().min(1).optional(),
   AGENT_ENGAGEMENT_MAX_NETWORK_REQUESTS: z.coerce.number().int().min(1).optional(),
   AGENT_ENGAGEMENT_MAX_DURATION_SECONDS: z.coerce.number().int().min(1).optional(),
+
+  // --- Part 4: Security Reasoning Engine resource limits (spec §113) ---
+  REASONING_MAX_GRAPH_NODES: positiveInt.default(5000),
+  REASONING_MAX_GRAPH_EDGES: positiveInt.default(20000),
+  REASONING_MAX_SIGNALS: positiveInt.default(5000),
+  REASONING_MAX_PARAMETERS: positiveInt.default(10000),
+  REASONING_MAX_ENDPOINTS: positiveInt.default(5000),
+  REASONING_MAX_OBJECTS: positiveInt.default(2000),
+  REASONING_MAX_EXAMPLE_VALUES: positiveInt.default(8),
+  REASONING_MAX_COMPARISON_BYTES: positiveInt.default(65536),
+  REASONING_MAX_MUTATION_CANDIDATES: positiveInt.default(64),
 });
 
 export type EnvRaw = z.infer<typeof EnvSchema>;
@@ -137,6 +154,19 @@ export interface AppConfig {
     toolsBrowser: boolean;
     knowledgeSearch: boolean;
     reporting: boolean;
+    securityReasoning: boolean;
+  };
+  /** Part 4: reasoning engine resource limits (spec §113). */
+  reasoning: {
+    maxGraphNodes: number;
+    maxGraphEdges: number;
+    maxSignals: number;
+    maxParameters: number;
+    maxEndpoints: number;
+    maxObjects: number;
+    maxExampleValues: number;
+    maxComparisonBytes: number;
+    maxMutationCandidates: number;
   };
   /** Part 2: Agent OS tunables. */
   agent: {

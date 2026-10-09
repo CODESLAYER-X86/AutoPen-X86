@@ -74,6 +74,18 @@ function toAppConfig(raw: EnvRaw, googleApiKeyConfigured: boolean): AppConfig {
       toolsBrowser: raw.FEATURE_TOOLS_BROWSER,
       knowledgeSearch: raw.FEATURE_KNOWLEDGE_SEARCH,
       reporting: raw.FEATURE_REPORTING,
+      securityReasoning: raw.FEATURE_SECURITY_REASONING,
+    },
+    reasoning: {
+      maxGraphNodes: raw.REASONING_MAX_GRAPH_NODES,
+      maxGraphEdges: raw.REASONING_MAX_GRAPH_EDGES,
+      maxSignals: raw.REASONING_MAX_SIGNALS,
+      maxParameters: raw.REASONING_MAX_PARAMETERS,
+      maxEndpoints: raw.REASONING_MAX_ENDPOINTS,
+      maxObjects: raw.REASONING_MAX_OBJECTS,
+      maxExampleValues: raw.REASONING_MAX_EXAMPLE_VALUES,
+      maxComparisonBytes: raw.REASONING_MAX_COMPARISON_BYTES,
+      maxMutationCandidates: raw.REASONING_MAX_MUTATION_CANDIDATES,
     },
     agent: {
       loop: {

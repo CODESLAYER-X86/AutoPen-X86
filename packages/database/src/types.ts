@@ -18,6 +18,23 @@ import type {
   TestStatus,
   FindingStatus,
   TokenPurpose,
+  // Part 4 — Security Reasoning Engine enums.
+  EndpointStatus,
+  DiscoverySource,
+  ConfidenceCategory,
+  ParameterLocation,
+  ValueCharacteristic,
+  ParameterSemantic,
+  AccessOutcome,
+  SignalType,
+  SignalStatus,
+  WorkflowStatus,
+  TransitionObservationKind,
+  AttackNodeType,
+  AttackEdgeRelation,
+  CorrelationKind,
+  VerificationStatus,
+  VerificationCheckStatus,
 } from '@aegis/shared';
 import type { Iso8601, JsonRecord } from '@aegis/shared';
 
@@ -398,4 +415,263 @@ export interface EngagementUsageRecord {
   storage_bytes: number;
   tool_calls: number;
   updated_at: Iso8601;
+}
+
+// ---------------------------------------------------------------------------
+// Part 4 — Security Reasoning Engine records (spec Part 4 §5-§43).
+// ---------------------------------------------------------------------------
+
+export interface EndpointMethodRecord {
+  method: string;
+  observation_count: number;
+  identity_ids: string[];
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+}
+
+export interface EndpointRecord {
+  id: string;
+  engagement_id: string;
+  fingerprint: string;
+  scheme: string;
+  host: string;
+  port: number;
+  path: string;
+  canonical_path: string;
+  canonical_confidence: number;
+  resource_family: string | null;
+  api_version: string | null;
+  methods: EndpointMethodRecord[];
+  content_types: string[];
+  authentication_observed: boolean;
+  identities_observed: string[];
+  status: EndpointStatus;
+  discovery_source: DiscoverySource;
+  confidence_category: ConfidenceCategory;
+  confidence: number;
+  observed_urls: string[];
+  observation_count: number;
+  signal_count: number;
+  evidence_ids: string[];
+  merged_into: string | null;
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface SemanticCandidateRecord {
+  semantic: ParameterSemantic;
+  confidence: number;
+  reason: string;
+}
+
+export interface ParameterRecord {
+  id: string;
+  engagement_id: string;
+  endpoint_id: string | null;
+  fingerprint: string;
+  name: string;
+  location: ParameterLocation;
+  observed_type: string | null;
+  example_values: string[];
+  value_characteristics: ValueCharacteristic[];
+  semantic_candidates: SemanticCandidateRecord[];
+  identity_association: string[];
+  is_sensitive: boolean;
+  confidence: number;
+  observation_count: number;
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface AuthorizationMatrixRecord {
+  id: string;
+  engagement_id: string;
+  endpoint_id: string;
+  identity_id: string | null;
+  object_ref: string | null;
+  action: string | null;
+  outcome: AccessOutcome;
+  status_code: number | null;
+  request_id: string | null;
+  evidence_ids: string[];
+  observation_count: number;
+  fingerprint: string;
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+}
+
+export interface WorkflowRecord {
+  id: string;
+  engagement_id: string;
+  name: string;
+  status: WorkflowStatus;
+  required_identity: string | null;
+  confidence: number;
+  state_count: number;
+  transition_count: number;
+  evidence_ids: string[];
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface WorkflowStateRecord {
+  id: string;
+  engagement_id: string;
+  workflow_id: string;
+  name: string;
+  detection: JsonRecord;
+  observed: boolean;
+  confidence: number;
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+}
+
+export interface WorkflowTransitionRecord {
+  id: string;
+  engagement_id: string;
+  workflow_id: string;
+  from_state_id: string | null;
+  to_state_id: string;
+  trigger_endpoint_id: string | null;
+  trigger_summary: string;
+  identity_id: string | null;
+  observation_kind: TransitionObservationKind;
+  confidence: number;
+  occurrence_count: number;
+  evidence_ids: string[];
+  fingerprint: string;
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+}
+
+export interface DataFlowRecord {
+  id: string;
+  engagement_id: string;
+  source: JsonRecord;
+  transformations: string[];
+  sink: JsonRecord;
+  correlation: CorrelationKind;
+  confidence: number;
+  evidence_ids: string[];
+  fingerprint: string;
+  created_at: Iso8601;
+}
+
+export interface SecuritySignalRecord {
+  id: string;
+  engagement_id: string;
+  signal_type: SignalType;
+  source: string;
+  endpoint_id: string | null;
+  parameter_id: string | null;
+  identity_ids: string[];
+  object_ref: string | null;
+  confidence: number;
+  summary: string;
+  metadata: JsonRecord;
+  status: SignalStatus;
+  evidence_ids: string[];
+  fingerprint: string;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface ObjectCandidateRecord {
+  id: string;
+  engagement_id: string;
+  name: string;
+  kind: string;
+  parameter_id: string | null;
+  endpoint_id: string | null;
+  example_values: string[];
+  owner_identity_id: string | null;
+  lifecycle: JsonRecord;
+  confidence: number;
+  observation_count: number;
+  evidence_ids: string[];
+  fingerprint: string;
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+  created_at: Iso8601;
+}
+
+export interface AttackNodeRecord {
+  id: string;
+  engagement_id: string;
+  node_type: AttackNodeType;
+  external_ref: string | null;
+  fingerprint: string;
+  label: string;
+  metadata: JsonRecord;
+  confidence: number;
+  first_seen: Iso8601;
+  last_seen: Iso8601;
+}
+
+export interface AttackEdgeRecord {
+  id: string;
+  engagement_id: string;
+  source_node_id: string;
+  target_node_id: string;
+  relation: AttackEdgeRelation;
+  metadata: JsonRecord;
+  confidence: number;
+  created_at: Iso8601;
+}
+
+export interface DifferentialResultRecord {
+  id: string;
+  engagement_id: string;
+  test_id: string | null;
+  hypothesis_id: string | null;
+  baseline_request_id: string | null;
+  candidate_request_id: string | null;
+  baseline_identity: string | null;
+  candidate_identity: string | null;
+  summary: JsonRecord;
+  detail: JsonRecord;
+  created_at: Iso8601;
+}
+
+export interface VerificationCheckRecord {
+  check: string;
+  status: VerificationCheckStatus;
+  detail: string;
+  evidence_ids: string[];
+}
+
+export interface VerificationAlternativeRecord {
+  explanation: string;
+  refuted: boolean;
+  detail: string;
+}
+
+export interface VerificationRecord {
+  id: string;
+  engagement_id: string;
+  hypothesis_id: string | null;
+  kind: string;
+  alternatives: VerificationAlternativeRecord[];
+  checklist: VerificationCheckRecord[];
+  status: VerificationStatus;
+  result: JsonRecord;
+  evidence_ids: string[];
+  created_at: Iso8601;
+  completed_at: Iso8601 | null;
+}
+
+export interface ReasoningFailureRecord {
+  id: string;
+  engagement_id: string;
+  processor: string;
+  event_id: string | null;
+  event_type: string | null;
+  error: JsonRecord;
+  retry_count: number;
+  status: 'NEW' | 'RESOLVED' | 'SKIPPED';
+  created_at: Iso8601;
 }

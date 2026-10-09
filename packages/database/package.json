@@ -1,6 +1,6 @@
 {
   "name": "@aegis/database",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -15,8 +15,8 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@aegis/contracts": "0.3.0",
-    "@aegis/shared": "0.3.0",
+    "@aegis/contracts": "0.4.0",
+    "@aegis/shared": "0.4.0",
     "pg": "^8.13.0"
   },
   "devDependencies": {

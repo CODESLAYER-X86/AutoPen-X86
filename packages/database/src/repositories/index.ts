@@ -36,6 +36,26 @@ import {
   ToolExecutionsRepository,
   WebSocketsRepository,
 } from './interaction.js';
+import {
+  AttackEdgesRepository,
+  AttackNodesRepository,
+  ReasoningFailuresRepository,
+} from './reasoning-graph.js';
+import {
+  DataFlowsRepository,
+  DifferentialResultsRepository,
+  VerificationsRepository,
+  WorkflowStatesRepository,
+  WorkflowTransitionsRepository,
+  WorkflowsRepository,
+} from './reasoning-flows.js';
+import {
+  AuthorizationMatrixRepository,
+  EndpointsRepository,
+  ObjectCandidatesRepository,
+  ParametersRepository,
+  SecuritySignalsRepository,
+} from './reasoning-surface.js';
 
 export interface Repositories {
   users: UsersRepository;
@@ -77,6 +97,21 @@ export interface Repositories {
   websockets: WebSocketsRepository;
   toolExecutions: ToolExecutionsRepository;
   authWorkflows: AuthWorkflowsRepository;
+  // Part 4 — security reasoning engine repositories.
+  endpoints: EndpointsRepository;
+  parameters: ParametersRepository;
+  authzMatrix: AuthorizationMatrixRepository;
+  securitySignals: SecuritySignalsRepository;
+  objectCandidates: ObjectCandidatesRepository;
+  workflows: WorkflowsRepository;
+  workflowStates: WorkflowStatesRepository;
+  workflowTransitions: WorkflowTransitionsRepository;
+  dataFlows: DataFlowsRepository;
+  differentialResults: DifferentialResultsRepository;
+  verifications: VerificationsRepository;
+  attackNodes: AttackNodesRepository;
+  attackEdges: AttackEdgesRepository;
+  reasoningFailures: ReasoningFailuresRepository;
 }
 
 export function createRepositories(pool: Pool): Repositories {
@@ -118,6 +153,20 @@ export function createRepositories(pool: Pool): Repositories {
     websockets: new WebSocketsRepository(pool),
     toolExecutions: new ToolExecutionsRepository(pool),
     authWorkflows: new AuthWorkflowsRepository(pool),
+    endpoints: new EndpointsRepository(pool),
+    parameters: new ParametersRepository(pool),
+    authzMatrix: new AuthorizationMatrixRepository(pool),
+    securitySignals: new SecuritySignalsRepository(pool),
+    objectCandidates: new ObjectCandidatesRepository(pool),
+    workflows: new WorkflowsRepository(pool),
+    workflowStates: new WorkflowStatesRepository(pool),
+    workflowTransitions: new WorkflowTransitionsRepository(pool),
+    dataFlows: new DataFlowsRepository(pool),
+    differentialResults: new DifferentialResultsRepository(pool),
+    verifications: new VerificationsRepository(pool),
+    attackNodes: new AttackNodesRepository(pool),
+    attackEdges: new AttackEdgesRepository(pool),
+    reasoningFailures: new ReasoningFailuresRepository(pool),
   };
 }
 
@@ -162,4 +211,20 @@ export {
   StorageEntriesRepository,
   ToolExecutionsRepository,
   WebSocketsRepository,
+};
+export {
+  AttackEdgesRepository,
+  AttackNodesRepository,
+  AuthorizationMatrixRepository,
+  DataFlowsRepository,
+  DifferentialResultsRepository,
+  EndpointsRepository,
+  ObjectCandidatesRepository,
+  ParametersRepository,
+  ReasoningFailuresRepository,
+  SecuritySignalsRepository,
+  VerificationsRepository,
+  WorkflowStatesRepository,
+  WorkflowTransitionsRepository,
+  WorkflowsRepository,
 };

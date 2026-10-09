@@ -28,18 +28,24 @@ export async function metaRoutes(app: FastifyInstance): Promise<void> {
         tools_browser: c.config.features.toolsBrowser,
         knowledge_search: c.config.features.knowledgeSearch,
         reporting: c.config.features.reporting,
+        security_reasoning: c.config.features.securityReasoning,
       },
       capabilities: {
         tools_total: tools.length,
         tools_implemented: tools.filter((tool) => tool.implemented).length,
         // Part 3: the interaction layer is REAL — HTTP engine, browser
         // automation, replay/mutation, sessions, artifact retrieval.
-        // Security reasoning over the captured data arrives in Part 4.
         autonomous_run_loop: true,
         autonomous_tools: {
           http: c.config.features.toolsHttp,
           browser: c.config.features.toolsBrowser,
           knowledge: false, // Part 5
+        },
+        // Part 4: security reasoning over captured observations.
+        security_reasoning: {
+          attack_surface: c.config.features.securityReasoning,
+          differential: c.config.features.securityReasoning,
+          verification: c.config.features.securityReasoning,
         },
       },
     });

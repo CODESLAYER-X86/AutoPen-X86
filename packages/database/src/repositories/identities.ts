@@ -90,6 +90,16 @@ export class SessionsRepository implements RepoBase {
     return result.rows[0] ? mapSession(result.rows[0]) : null;
   }
 
+  /** Part 4: session lookup by id (expiration event correlation). */
+  async findById(sessionId: string): Promise<SessionRecord | null> {
+    const result = await this.pool.query(
+      `SELECT id, identity_id, type, status, metadata, secret_reference, created_at, expires_at, updated_at, status_reason, engagement_id
+       FROM sessions WHERE id = $1`,
+      [sessionId],
+    );
+    return result.rows[0] ? mapSession(result.rows[0]) : null;
+  }
+
   /** Part 3 §27: deterministic session status transition + reason. */
   async updateStatus(sessionId: string, status: SessionStatus, reason: string | null): Promise<SessionRecord | null> {
     const result = await this.pool.query(

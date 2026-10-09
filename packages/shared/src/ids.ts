@@ -60,7 +60,22 @@ export type IdPrefix =
   | 'WSM' // websocket message
   | 'TEX' // tool execution record
   | 'AUS' // target-side auth state (identity authentication material ref)
-  | 'AWF'; // recorded authentication workflow
+  | 'AWF' // recorded authentication workflow
+  // Part 4 prefixes (security reasoning engine).
+  | 'EPD' // endpoint record
+  | 'PRM' // parameter record
+  | 'AZM' // authorization matrix cell
+  | 'WFL' // workflow candidate
+  | 'WST' // workflow state
+  | 'WTR' // workflow transition
+  | 'DFL' // data flow record
+  | 'SIG' // security signal
+  | 'OBJ' // object candidate
+  | 'AGN' // attack graph node
+  | 'AGE' // attack graph edge
+  | 'DFC' // differential comparison result
+  | 'VER' // verification record
+  | 'RFL'; // reasoning processor failure
 
 /** Matches `<PREFIX>_<16..32 base32 chars>` and is case sensitive. */
 export const ID_PATTERN = /^[A-Z]{2,6}_[A-Z2-7]{16,32}$/;

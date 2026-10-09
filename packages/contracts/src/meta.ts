@@ -17,6 +17,7 @@ export const MetaResponseSchema = z.object({
     tools_browser: z.boolean(),
     knowledge_search: z.boolean(),
     reporting: z.boolean(),
+    security_reasoning: z.boolean(),
   }),
   capabilities: z.object({
     tools_total: z.number().int(),
@@ -27,6 +28,12 @@ export const MetaResponseSchema = z.object({
       http: z.boolean(),
       browser: z.boolean(),
       knowledge: z.boolean(),
+    }),
+    /** Part 4: security reasoning over captured observations. */
+    security_reasoning: z.object({
+      attack_surface: z.boolean(),
+      differential: z.boolean(),
+      verification: z.boolean(),
     }),
   }),
 });

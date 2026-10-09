@@ -153,6 +153,23 @@ export const EVENT_TYPES = [
   'AUTH_WORKFLOW_RECORDED',
   'TOOL_EXECUTION_RECORDED',
   'RATE_LIMIT_ENFORCED',
+  // Part 4 — Security Reasoning Engine event vocabulary (spec Part 4 §109).
+  'ENDPOINT_DISCOVERED',
+  'ENDPOINT_MERGED',
+  'PARAMETER_OBSERVED',
+  'AUTHORIZATION_MATRIX_UPDATED',
+  'WORKFLOW_RECONSTRUCTED',
+  'WORKFLOW_TRANSITION_RECORDED',
+  'DATA_FLOW_RECORDED',
+  'SECURITY_SIGNAL_GENERATED',
+  'OBJECT_CANDIDATE_CREATED',
+  'ATTACK_GRAPH_UPDATED',
+  'DIFFERENTIAL_COMPARISON_RECORDED',
+  'VERIFICATION_CREATED',
+  'VERIFICATION_COMPLETED',
+  'REASONING_HYPOTHESES_APPLIED',
+  'REASONING_PROCESSOR_FAILED',
+  'REASONING_INGEST_COMPLETED',
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -507,5 +524,306 @@ export const SESSION_EXPIRATION_SIGNALS = [
 ] as const;
 export type SessionExpirationSignal = (typeof SESSION_EXPIRATION_SIGNALS)[number];
 
-export const PLATFORM_VERSION = '0.3.0-part3';
+export const PLATFORM_VERSION = '0.4.0-part4';
 export const PLATFORM_NAME = 'Aegis Platform';
+
+// ---------------------------------------------------------------------------
+// Part 4 — Security Reasoning Engine domain enums (spec Part 4 §3, §7-§13,
+// §10, §14-§17, §23, §25, §30, §35, §42, §51, §70, §77-78, §84, §98, §102,
+// §131).
+// ---------------------------------------------------------------------------
+
+/** Endpoint lifecycle (Part 4 §10). */
+export const ENDPOINT_STATUSES = [
+  'DISCOVERED',
+  'OBSERVED',
+  'MAPPED',
+  'TESTING',
+  'INTERESTING',
+  'VERIFIED',
+  'IGNORED',
+] as const;
+export type EndpointStatus = (typeof ENDPOINT_STATUSES)[number];
+
+/** How an asset was discovered (Part 4 §12). Inferred sources are never
+ *  represented as observations (§12: never fake an observed endpoint). */
+export const DISCOVERY_SOURCES = [
+  'BROWSER_NAVIGATION',
+  'BROWSER_NETWORK',
+  'HTML',
+  'FORM',
+  'JAVASCRIPT',
+  'WEBSOCKET',
+  'ROBOTS_TXT',
+  'SITEMAP',
+  'API_SPECIFICATION',
+  'IMPORTED_TRAFFIC',
+  'USER_INPUT',
+  'KNOWLEDGE_INFERENCE',
+] as const;
+export type DiscoverySource = (typeof DISCOVERY_SOURCES)[number];
+
+/** Confidence categories for discovered assets (Part 4 §13). */
+export const CONFIDENCE_CATEGORIES = [
+  'OBSERVED',
+  'STRONGLY_INFERRED',
+  'INFERRED',
+  'UNVERIFIED',
+] as const;
+export type ConfidenceCategory = (typeof CONFIDENCE_CATEGORIES)[number];
+
+/** Parameter locations (Part 4 §14). */
+export const PARAMETER_LOCATIONS = [
+  'QUERY',
+  'PATH',
+  'JSON',
+  'FORM',
+  'MULTIPART',
+  'HEADER',
+  'COOKIE',
+  'WEBSOCKET',
+  'GRAPHQL',
+  'HTML_FORM',
+  'JAVASCRIPT',
+] as const;
+export type ParameterLocation = (typeof PARAMETER_LOCATIONS)[number];
+
+/** Deterministic value characteristics (Part 4 §17). */
+export const VALUE_CHARACTERISTICS = [
+  'NUMERIC',
+  'UUID',
+  'EMAIL',
+  'URL',
+  'JWT_LIKE',
+  'BASE64_LIKE',
+  'HEXADECIMAL',
+  'TIMESTAMP',
+  'JSON',
+  'OPAQUE_TOKEN',
+  'FILE',
+  'IDENTIFIER',
+] as const;
+export type ValueCharacteristic = (typeof VALUE_CHARACTERISTICS)[number];
+
+/** Parameter semantic classification candidates (Part 4 §16). */
+export const PARAMETER_SEMANTICS = [
+  'IDENTIFIER',
+  'PRIVILEGE',
+  'URL',
+  'AUTHENTICATION',
+  'MONETARY',
+  'NUMERIC',
+  'UPLOAD',
+  'TEXT',
+  'UNKNOWN',
+] as const;
+export type ParameterSemantic = (typeof PARAMETER_SEMANTICS)[number];
+
+/** Authorization matrix outcomes (Part 4 §23). 403 is not equated with every
+ *  possible denial — each outcome class is recorded explicitly. */
+export const ACCESS_OUTCOMES = [
+  'ALLOWED',
+  'DENIED',
+  'REDIRECTED',
+  'UNKNOWN',
+  'ERROR',
+] as const;
+export type AccessOutcome = (typeof ACCESS_OUTCOMES)[number];
+
+/** Deterministic security signal types (Part 4 §42, §121). Signals are NOT
+ *  findings (§136: OBSERVATION != VULNERABILITY). */
+export const SIGNAL_TYPES = [
+  'AUTH_STATE_CHANGE',
+  'OBJECT_IDENTIFIER',
+  'CROSS_IDENTITY_DIFFERENCE',
+  'CROSS_IDENTITY_OBJECT_REFERENCE',
+  'REFLECTED_INPUT',
+  'UNEXPECTED_REDIRECT',
+  'STATE_TRANSITION_ANOMALY',
+  'SENSITIVE_DATA_EXPOSURE',
+  'ERROR_DISCLOSURE',
+  'UNUSUAL_RESPONSE_DIFFERENCE',
+  'CLIENT_CONTROLLED_VALUE',
+  'TOKEN_PATTERN',
+  'UNEXPECTED_METHOD_BEHAVIOR',
+] as const;
+export type SignalType = (typeof SIGNAL_TYPES)[number];
+
+/** Signal lifecycle: NEW (generated), CONSUMED (drove a hypothesis),
+ *  SUPERSEDED (a newer, more specific signal replaces it). */
+export const SIGNAL_STATUSES = ['NEW', 'CONSUMED', 'SUPERSEDED'] as const;
+export type SignalStatus = (typeof SIGNAL_STATUSES)[number];
+
+/** Workflow candidate lifecycle (Part 4 §34). */
+export const WORKFLOW_STATUSES = ['CANDIDATE', 'CONFIRMED', 'REJECTED'] as const;
+export type WorkflowStatus = (typeof WORKFLOW_STATUSES)[number];
+
+/** Transition observation kind (Part 4 §35). Inferred never becomes fact. */
+export const TRANSITION_OBSERVATION_KINDS = ['OBSERVED', 'INFERRED'] as const;
+export type TransitionObservationKind = (typeof TRANSITION_OBSERVATION_KINDS)[number];
+
+/** Mutation strategy categories (Part 4 §51). The LLM chooses a category;
+ *  the deterministic engine generates the actual mutation. */
+export const MUTATION_CATEGORIES = [
+  'IDENTIFIER',
+  'TYPE',
+  'BOUNDARY',
+  'STRUCTURE',
+  'METHOD',
+  'STATE',
+  'AUTHENTICATION',
+  'AUTHORIZATION',
+  'HEADER',
+  'COOKIE',
+  'JSON',
+  'FORM',
+  'PATH',
+  'QUERY',
+] as const;
+export type MutationCategory = (typeof MUTATION_CATEGORIES)[number];
+
+/** Verification lifecycle (Part 4 §72). The verifier is skeptical by design. */
+export const VERIFICATION_STATUSES = [
+  'PENDING',
+  'RUNNING',
+  'VERIFIED',
+  'REFUTED',
+  'INCONCLUSIVE',
+] as const;
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+
+/** Per-check outcome inside a verification checklist (Part 4 §72). */
+export const VERIFICATION_CHECK_STATUSES = [
+  'PASS',
+  'FAIL',
+  'UNKNOWN',
+  'NOT_APPLICABLE',
+] as const;
+export type VerificationCheckStatus = (typeof VERIFICATION_CHECK_STATUSES)[number];
+
+/** Evidence strength classification (Part 4 §70). Explainable, not numeric. */
+export const EVIDENCE_STRENGTH_LEVELS = [
+  'WEAK',
+  'MODERATE',
+  'STRONG',
+  'CONFIRMATORY',
+  'CONTRADICTORY',
+] as const;
+export type EvidenceStrengthLevel = (typeof EVIDENCE_STRENGTH_LEVELS)[number];
+
+/** Test result classification (Part 4 §102). INCONCLUSIVE is a valid result. */
+export const TEST_OUTCOMES = [
+  'NO_SIGNAL',
+  'INTERESTING',
+  'SUPPORTS_HYPOTHESIS',
+  'CONTRADICTS_HYPOTHESIS',
+  'INCONCLUSIVE',
+  'ERROR',
+  'BLOCKED',
+] as const;
+export type TestOutcome = (typeof TEST_OUTCOMES)[number];
+
+/** Attack-surface graph node types (Part 4 §4). */
+export const ATTACK_NODE_TYPES = [
+  'ENGAGEMENT',
+  'TARGET',
+  'HOST',
+  'PORT',
+  'APPLICATION',
+  'PAGE',
+  'ENDPOINT',
+  'PARAMETER',
+  'FORM',
+  'SCRIPT',
+  'API',
+  'WEBSOCKET',
+  'IDENTITY',
+  'SESSION',
+  'OBJECT',
+  'WORKFLOW',
+  'STATE',
+  'SOURCE_FILE',
+  'ARTIFACT',
+  'HYPOTHESIS',
+  'FINDING',
+] as const;
+export type AttackNodeType = (typeof ATTACK_NODE_TYPES)[number];
+
+/** Attack-surface graph edge relations (Part 4 §4). */
+export const ATTACK_EDGE_RELATIONS = [
+  'contains',
+  'loads',
+  'calls',
+  'accepts',
+  'owns',
+  'accesses',
+  'belongs_to',
+  'transitions_to',
+  'concerns',
+  'supports',
+  'references',
+  'observes',
+  'establishes',
+] as const;
+export type AttackEdgeRelation = (typeof ATTACK_EDGE_RELATIONS)[number];
+
+/** Data-flow source kinds (Part 4 §38). */
+export const DATA_FLOW_SOURCE_KINDS = [
+  'FORM_FIELD',
+  'URL_PARAM',
+  'JSON_FIELD',
+  'HEADER',
+  'COOKIE',
+  'STORAGE',
+  'WEBSOCKET_MESSAGE',
+  'UPLOADED_FILE',
+  'BROWSER_STATE',
+] as const;
+export type DataFlowSourceKind = (typeof DATA_FLOW_SOURCE_KINDS)[number];
+
+/** Data-flow sink kinds (Part 4 §40). */
+export const DATA_FLOW_SINK_KINDS = [
+  'HTTP_RESPONSE',
+  'HTML_DOM',
+  'SCRIPT_CONTEXT',
+  'REDIRECT',
+  'DOWNLOAD',
+  'WEBSOCKET',
+  'APPLICATION_STATE',
+  'REQUEST_PARAMETER',
+] as const;
+export type DataFlowSinkKind = (typeof DATA_FLOW_SINK_KINDS)[number];
+
+/** Deterministic data transformations (Part 4 §39). */
+export const DATA_TRANSFORMATIONS = [
+  'URL_ENCODED',
+  'JSON_SERIALIZED',
+  'BASE64',
+  'HEX',
+  'COMPRESSED',
+  'JWT_ENCODED',
+  'MULTIPART_ENCODED',
+] as const;
+export type DataTransformation = (typeof DATA_TRANSFORMATIONS)[number];
+
+/** Correlation kinds that produce data-flow relationships (Part 4 §91-§92). */
+export const CORRELATION_KINDS = [
+  'FORM_TO_REQUEST',
+  'SCRIPT_TO_ENDPOINT',
+  'STORAGE_TO_REQUEST',
+  'INPUT_TO_OUTPUT',
+  'WS_REQUEST_RESPONSE',
+] as const;
+export type CorrelationKind = (typeof CORRELATION_KINDS)[number];
+
+/** Reasoning-engine stop recommendations (Part 4 §131). Part 2 decides. */
+export const STOP_RECOMMENDATIONS = [
+  'NO_ACTIONABLE_HYPOTHESES',
+  'SUFFICIENT_EVIDENCE',
+  'REQUIRES_USER_INPUT',
+  'REQUIRES_IDENTITY',
+  'REQUIRES_BROWSER_STATE',
+  'OUT_OF_SCOPE',
+  'RESOURCE_LIMIT',
+] as const;
+export type StopRecommendation = (typeof STOP_RECOMMENDATIONS)[number];
