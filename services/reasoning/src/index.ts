@@ -10,6 +10,7 @@
  */
 import { generateId } from '@aegis/shared';
 import type {
+  DifferentialResult,
   ReasoningQueryResponse,
   SecurityProjection,
   TestCandidateListResponse,
@@ -26,7 +27,7 @@ import { hypothesisGroupsFromSignals, type HypothesisGroup } from './hypothesis-
 import { evaluateVerification, deadEndPayload, type VerificationOutcome } from './verification.js';
 import { classifyEvidence, reproductionCountFor } from './evidence-strength.js';
 import { SecurityProjectionBuilder, planCandidateTests } from './projection.js';
-import { DEFAULT_REASONING_LIMITS, type ReasoningLimits } from './limits.js';
+import type { ReasoningLimits } from './limits.js';
 import { unusualResponseDifferenceSignal } from './signal-engine.js';
 
 export interface ReasoningEngineDeps {
@@ -397,7 +398,18 @@ export class SecurityReasoningEngine {
       recent_differentials: (input.hypothesisId
         ? differentials.filter((differential) => differential.hypothesis_id === input.hypothesisId)
         : differentials
-      ).slice(0, 8),
+      )
+        .slice(0, 8)
+        .map(
+          (differential) =>
+            ({
+              ...differential,
+              // We always write a structurally-typed summary (insert path);
+              // the row stores it as a generic JSON record.
+              summary: differential.summary as unknown as DifferentialResult['summary'],
+              detail: differential.detail as Record<string, unknown>,
+            }) satisfies DifferentialResult,
+        ),
       dead_ends: deadEnds.map((deadEnd) => ({
         id: deadEnd.id,
         hypothesis_id: deadEnd.hypothesis_id,

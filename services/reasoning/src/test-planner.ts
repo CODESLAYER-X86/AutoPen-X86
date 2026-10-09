@@ -136,7 +136,10 @@ export function planTests(input: TestPlanInput): TestPlanResult {
         parameter.semantic_candidates.some((candidate) => candidate.semantic === 'IDENTIFIER'),
       );
       const familyTypes = collectFamilyTypes(hypothesis, actionable);
-      const siblingTypes = familyTypes.length >= 2 ? familyTypes : [hypothesis.type, 'AUTHORIZATION'];
+      // Default competing pair when no siblings exist (§45): authorization
+      // failure vs configuration/public interpretation. Never the same type
+      // twice — a degenerate pair yields zero information gain.
+      const siblingTypes = familyTypes.length >= 2 ? familyTypes : ['AUTHORIZATION', 'CONFIGURATION'];
 
       // 1. Cross-identity replay (§61) — the primary authz discriminator.
       if (identityCount >= 2 && (hypothesis.type === 'AUTHORIZATION' || hypothesis.type === 'BUSINESS_LOGIC')) {

@@ -160,3 +160,42 @@ State machine additions: **BrowserContext** `CREATE -> INITIALIZE -> READY ->
 ACTIVE -> (PAUSED) -> CLOSING -> CLOSED | EXPIRED | FAILED` (§5).
 **Session** gains `status_reason` (why it left ACTIVE, §27) and
 `engagement_id` scoping.
+
+---
+
+# Part 4 — reasoning tables (migrations 041–051)
+
+All derived state is idempotent by deterministic fingerprints (§111):
+
+* `endpoints` — canonical attack surface (§7-§13): fingerprint
+  (scheme|host|port|canonical-path), methods observed (never assumed),
+  observed URLs, confidence category (OBSERVED / INFERRED / …),
+  discovery source, `merged_into` for canonical dedup.
+* `parameters` — registry across QUERY/PATH/JSON/FORM/MULTIPART/HEADER/
+  COOKIE/WEBSOCKET (§14-§15): value characteristics, semantic candidates
+  with confidence, sensitive names stored redacted.
+* `authorization_matrix` — identity × endpoint × object_ref × action with
+  the latest outcome (ALLOWED/DENIED/REDIRECTED/ERROR/UNKNOWN) (§23, §98).
+* `workflows`, `workflow_states`, `workflow_transitions` — candidate
+  reconstruction from observed sequences (§30-§35); transitions carry
+  trigger summaries, identity, evidence and fingerprints.
+* `data_flows` — source → transformations → sink relationships with
+  deterministic correlation fingerprints (§37-§41).
+* `security_signals` — the deterministic signal layer (§42-§43): type,
+  source, endpoint/parameter refs, identities, object ref, confidence,
+  bounded summary, status NEW → CONSUMED/SUPERSEDED.
+* `object_candidates` — object model (§19, §96-§97): name, kind, example
+  values, owner identity, lifecycle evidence.
+* `attack_nodes`, `attack_edges` — persistent attack-surface graph (§4-§6).
+* `differential_results` — semantic comparisons with structured summaries
+  (status/schema/fields/values/similarity/volatile) (§25-§28).
+* `verifications` — skeptical verdicts: checklist (IS_OBJECT_PUBLIC,
+  IS_RESPONSE_CACHED, IS_DATA_ACTUALLY_SENSITIVE,
+  IS_SHARED_ACCESS_LEGITIMATE, DOES_BEHAVIOR_REPRODUCE,
+  DOES_BASELINE_DIFFER), alternatives with refuted flags, result payload
+  with promotion decision (§70-§75).
+* `reasoning_failures` — processor failures with event refs (§112).
+
+Endpoint lifecycle (§10): DISCOVERED → OBSERVED → MAPPED/TESTING →
+INTERESTING/VERIFIED or IGNORED (merged). Signal lifecycle: NEW →
+CONSUMED (drove a hypothesis) / SUPERSEDED.

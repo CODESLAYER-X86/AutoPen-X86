@@ -9,7 +9,7 @@
  */
 import type { HttpMutation } from '@aegis/contracts';
 import type { MutationCategory } from '@aegis/shared';
-import type { ObjectCandidateRecord, ParameterRecord } from '@aegis/database';
+import type { ParameterRecord } from '@aegis/database';
 
 export interface MutationStrategyContext {
   /** Target endpoint canonical path (for path mutations). */
@@ -34,13 +34,13 @@ export interface MutationPlan {
 }
 
 const BOUNDARY_VALUES = ['', '0', '-1', '2147483647', '99999999999999999999'];
-const TYPE_VALUES: Array<{ label: string; value: unknown }> = [
+// HttpMutation values are scalars (contract http.ts): structural type
+// mutations (array/object) are intentionally NOT representable here.
+const TYPE_VALUES: Array<{ label: string; value: string | number | boolean | null }> = [
   { label: 'string_for_number', value: '1' },
   { label: 'number_for_string', value: 42 },
   { label: 'boolean_true', value: true },
   { label: 'null', value: null },
-  { label: 'array', value: ['a'] },
-  { label: 'object', value: { x: 1 } },
 ];
 
 export const MUTATION_CATEGORY_MAX_PER_REQUEST = 4;
@@ -96,7 +96,7 @@ function authorizationPlans(context: MutationStrategyContext): MutationPlan[] {
   }));
 }
 
-function authenticationPlans(context: MutationStrategyContext): MutationPlan[] {
+function authenticationPlans(_context: MutationStrategyContext): MutationPlan[] {
   // Anonymous comparison (§57): no identity, and (optionally) no auth headers.
   const plans: MutationPlan[] = [
     {
@@ -198,7 +198,7 @@ function structurePlans(context: MutationStrategyContext): MutationPlan[] {
   ];
 }
 
-function methodPlans(context: MutationStrategyContext): MutationPlan[] {
+function methodPlans(_context: MutationStrategyContext): MutationPlan[] {
   return ['PUT', 'PATCH', 'DELETE', 'OPTIONS'].map((method) => ({
     category: 'METHOD' as MutationCategory,
     description: `Send ${method} instead of the observed method`,
@@ -207,7 +207,7 @@ function methodPlans(context: MutationStrategyContext): MutationPlan[] {
   }));
 }
 
-function statePlans(context: MutationStrategyContext): MutationPlan[] {
+function statePlans(_context: MutationStrategyContext): MutationPlan[] {
   // Workflow mutations (§56) are request-SEQUENCE operations — represented as
   // plans the scheduler expands. No direct HTTP mutation is generated here.
   return [
@@ -286,7 +286,7 @@ function pathPlans(context: MutationStrategyContext): MutationPlan[] {
   ];
 }
 
-function headerPlans(context: MutationStrategyContext): MutationPlan[] {
+function headerPlans(_context: MutationStrategyContext): MutationPlan[] {
   return [
     {
       category: 'HEADER',
@@ -297,7 +297,7 @@ function headerPlans(context: MutationStrategyContext): MutationPlan[] {
   ];
 }
 
-function cookiePlans(context: MutationStrategyContext): MutationPlan[] {
+function cookiePlans(_context: MutationStrategyContext): MutationPlan[] {
   return [
     {
       category: 'COOKIE',
@@ -311,7 +311,7 @@ function cookiePlans(context: MutationStrategyContext): MutationPlan[] {
 function mutationForLocation(
   location: ParameterRecord['location'],
   name: string,
-  value: unknown,
+  value: string | number | boolean | null,
   operation: 'replace',
 ): HttpMutation {
   switch (location) {

@@ -463,7 +463,7 @@ export function unusualResponseDifferenceSignal(input: {
 // Object-driven helper (§96-§97).
 // ---------------------------------------------------------------------------
 
-export function objectSignalCandidates(objects: ObjectCandidateRecord[]): SignalCandidate[] {
+export function objectSignalCandidates(_objects: ObjectCandidateRecord[]): SignalCandidate[] {
   // Object candidates themselves are not signals; the OBJECT_IDENTIFIER
   // signal comes from parameters. This helper exists for lifecycle maturity:
   // an object with create+read+update+delete evidence is a workflow surface.

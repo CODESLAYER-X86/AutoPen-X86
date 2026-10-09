@@ -16,6 +16,7 @@ import type { Repositories } from '@aegis/database';
 import type { EventBus } from '@aegis/events';
 import type { ModelRouter } from '@aegis/model-runtime';
 import type { ToolGateway, ToolRegistry } from '@aegis/tools';
+import type { SecurityContextProvider } from '@aegis/contracts';
 import type { AgentLauncher } from '@aegis/orchestrator';
 import {
   AgentLoopEngine,
@@ -35,6 +36,8 @@ export interface AgentEngineRegistryDeps {
   modelRouter: ModelRouter;
   toolRegistry: ToolRegistry;
   toolGateway: ToolGateway;
+  /** Part 4 §120: deterministic security projection provider. */
+  security?: SecurityContextProvider;
 }
 
 export class AgentEngineRegistry implements AgentLauncher {
@@ -331,6 +334,7 @@ export class AgentEngineRegistry implements AgentLauncher {
       workerRuntime,
       quota,
       tokenBudgets,
+      security: this.deps.security,
       options: {
         maxCycles: config.agent.loop.maxCycles,
         maxIdleCycles: config.agent.loop.maxIdleCycles,

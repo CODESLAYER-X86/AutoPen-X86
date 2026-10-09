@@ -22,7 +22,7 @@ import { iso } from '@aegis/database';
 import type { EventBus } from '@aegis/events';
 import { generateId } from '@aegis/shared';
 import { mapRequestRow, mapResponseRow } from '@aegis/target-http';
-import { canonicalUpgrade, deriveEndpoint, type ObserveEndpointInput } from './endpoint-extractor.js';
+import { canonicalUpgrade, deriveEndpoint } from './endpoint-extractor.js';
 import {
   extractFormParameters,
   extractRequestParameters,
@@ -170,7 +170,7 @@ export class ReasoningEventProcessor {
           break;
       }
     } catch (error) {
-      await this.recordFailure('event-dispatch', event, error, event.engagement_id ?? undefined);
+      await this.recordFailure('event-dispatch', { type: event.type, trace: event.trace_id }, error, event.engagement_id ?? undefined);
     }
   }
 
@@ -216,7 +216,7 @@ export class ReasoningEventProcessor {
   }
 
   private async observeEndpoint(
-    request: { method: string; url: string; source: string },
+    request: { method: string; url: string; source: string; identity_id: string | null },
     engagementId: string,
     at: string,
   ): Promise<EndpointRecord | null> {
@@ -324,7 +324,7 @@ export class ReasoningEventProcessor {
       apiVersion: derived.apiVersion,
       method: request.method,
       contentType: null,
-      identityId: null,
+      identityId: request.identity_id,
       status: derived.status,
       discoverySource,
       confidenceCategory: derived.confidenceCategory,
@@ -661,7 +661,7 @@ export class ReasoningEventProcessor {
         await this.correlateStorage(engagementId, contextId, endpoints);
       }
     } catch (error) {
-      await this.recordFailure('dom-snapshot', { type: 'DOM', snapshot_id: snapshotId }, error, engagementId);
+      await this.recordFailure('dom-snapshot', { type: 'DOM', trace: snapshotId }, error, engagementId);
     }
   }
 
@@ -981,7 +981,7 @@ export class ReasoningEventProcessor {
         await this.insertSignal(engagementId, candidate);
       }
     } catch (error) {
-      await this.recordFailure('signal-refresh', { type: 'SIGNALS', endpoint_id: endpoint.id }, error, engagementId);
+      await this.recordFailure('signal-refresh', { type: 'SIGNALS', trace: endpoint.id }, error, engagementId);
     }
   }
 
@@ -1163,7 +1163,7 @@ export class ReasoningEventProcessor {
 
   private async recordFailure(
     processor: string,
-    event: { type?: string; trace?: string | null; [key: string]: unknown },
+    event: { type?: string | null; trace?: string | null },
     error: unknown,
     engagementId?: string,
   ): Promise<void> {

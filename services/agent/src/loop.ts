@@ -46,6 +46,7 @@ import { DecisionValidator } from './decision-validator.js';
 import { AgentMetricsCollector } from './metrics.js';
 import type { ModelProvider } from '@aegis/model-runtime';
 import type { ToolGateway, ToolRegistry } from '@aegis/tools';
+import type { SecurityContextProvider } from '@aegis/contracts';
 import type { WorkerRuntime } from '@aegis/worker-runtime';
 
 export interface LoopOptions {
@@ -88,6 +89,8 @@ export interface AgentEngineDeps {
   options?: Partial<LoopOptions>;
   quota?: QuotaManager;
   tokenBudgets?: TokenBudgeter;
+  /** Part 4 §120: security projection provider (deterministic engine). */
+  security?: SecurityContextProvider;
 }
 
 export type StepOutcome =
@@ -135,7 +138,7 @@ export class AgentLoopEngine {
     this.quota = deps.quota ?? new QuotaManager();
     this.tokenBudgets = deps.tokenBudgets ?? (new TokenBudgeter() as unknown as TokenBudgeter);
 
-    const contextBuilder = new ContextBuilder({ repos: deps.repos, tools: deps.tools });
+    const contextBuilder = new ContextBuilder({ repos: deps.repos, tools: deps.tools, security: deps.security });
     const decisionValidator = new DecisionValidator({
       tools: deps.tools,
       findTask: (engagementId, taskId) => this.repos.tasks.findByIdAndEngagement(taskId, engagementId),

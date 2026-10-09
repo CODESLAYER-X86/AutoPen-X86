@@ -113,3 +113,33 @@ All authenticated; engagement ownership enforced (404 on foreign resources).
 | GET | `/api/engagements/:id/browser/downloads` | captured downloads (§37) |
 | GET | `/api/engagements/:id/browser/websockets` | WS connections + messages (§36) |
 | GET | `/api/engagements/:id/auth-workflows` | recorded auth workflows (§28) |
+
+## Part 4 — security reasoning routes
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/engagements/:id/reasoning/status` | counts + recent processor failures (§113) |
+| POST | `/api/engagements/:id/reasoning/ingest` | backfill ingestion over recorded traffic (§110) |
+| GET | `/api/engagements/:id/reasoning/endpoints` | canonical attack surface (§7-§13) |
+| GET | `/api/engagements/:id/reasoning/parameters` | parameter registry (§14-§15) |
+| GET | `/api/engagements/:id/reasoning/signals` | signals (filter `?status=NEW`) (§42-§43) |
+| GET | `/api/engagements/:id/reasoning/authorization-matrix` | identity × endpoint × object outcomes (§23) |
+| GET | `/api/engagements/:id/reasoning/objects` | object candidates (§19) |
+| GET | `/api/engagements/:id/reasoning/workflows` | reconstructed workflows (§34) |
+| GET | `/api/engagements/:id/reasoning/workflows/:wid` | states + transitions detail |
+| GET | `/api/engagements/:id/reasoning/data-flows` | source→sink flows (§37-§41) |
+| GET | `/api/engagements/:id/reasoning/graph` | attack nodes + edges (§4-§5) |
+| GET | `/api/engagements/:id/reasoning/hypotheses/candidates` | deterministic competing candidates (§44-§45) |
+| POST | `/api/engagements/:id/reasoning/hypotheses/candidates/consume` | mark signals consumed |
+| GET | `/api/engagements/:id/reasoning/test-candidates` | planned tests + preconditions (§118) |
+| GET | `/api/engagements/:id/reasoning/differentials` | recorded comparisons (§25) |
+| POST | `/api/engagements/:id/reasoning/differential` | compare two recorded requests |
+| GET | `/api/engagements/:id/reasoning/verifications` | verification records (§72) |
+| POST | `/api/engagements/:id/reasoning/verify` | evaluate a hypothesis skeptically |
+| POST | `/api/engagements/:id/reasoning/query` | focused attack-surface query (§80) |
+| GET | `/api/engagements/:id/reasoning/projection` | leader security projection (§120) |
+
+When `FEATURE_SECURITY_REASONING=false` these routes answer **501**
+(`SECURITY_REASONING_DISABLED`) — honest unavailability. Worker tools:
+`reasoning.query`, `differential.compare`, `verification.evaluate`
+(READ_ONLY, engagement-bound).

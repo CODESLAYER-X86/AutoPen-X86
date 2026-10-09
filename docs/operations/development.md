@@ -133,3 +133,18 @@ engagement resource budget defaults.
   (§82.4 fail-closed cases). `npm run db:ensure` must run first.
 * **HAR import**: `POST /api/engagements/:id/http/har-import` — entries are
   scope-filtered at import and re-validated at replay.
+
+## Part 4 — security reasoning engine
+
+* **Feature flag**: `FEATURE_SECURITY_REASONING` (default on). When off,
+  reasoning routes answer 501 and the processor does not subscribe.
+* **Ingestion**: event-driven as traffic is recorded (§109); a full
+  deterministic backfill is available via
+  `POST /api/engagements/:id/reasoning/ingest` (idempotent, §111).
+* **Resource limits** (§113): `REASONING_MAX_*` env knobs (graph nodes,
+  edges, signals, parameters, endpoints, comparison bytes).
+* **Tests**: `tests/unit/part4-reasoning.test.ts` (§125 deterministic
+  primitives), `tests/integration/part4-reasoning.test.ts` (§126-§128 full
+  pipeline against the lab app: login → object endpoint → second identity →
+  differential → hypothesis → verification), `tests/security/part4-reasoning-security.test.ts`
+  (§115-§116 untrusted labeling, §132 permission boundaries, §113 limits).

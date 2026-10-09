@@ -194,24 +194,30 @@ export function evaluateVerification(input: VerificationEvidenceInput): Verifica
     };
   }
 
-  const required = checks.filter((check) => check.check === CHECK_NAMES.REPRODUCES || check.check === CHECK_NAMES.BASELINE_DIFFERS);
-  const allRequiredPass = required.every((check) => check.status === 'PASS');
-  const anyUnknown = required.some((check) => check.status === 'UNKNOWN');
-  if (allRequiredPass && sensitiveData) {
+  const reproducesCheck = checks.find((check) => check.check === CHECK_NAMES.REPRODUCES)?.status ?? 'UNKNOWN';
+  const baselineCheck = checks.find((check) => check.check === CHECK_NAMES.BASELINE_DIFFERS)?.status ?? 'UNKNOWN';
+
+  // Differentiated access (§72 "Does the baseline differ?"): when a
+  // differential EXISTS and the non-owner response materially differs from
+  // the owner baseline, the non-owner did not receive the protected content
+  // as-is — the failure hypothesis is refuted, not confirmed.
+  if (baselineCheck === 'PASS') {
     return {
       kind: kindFor(input.hypothesis),
-      status: 'VERIFIED',
+      status: 'REFUTED',
       checklist: checks,
       alternatives,
       result: {
-        verdict: 'VERIFIED',
-        reason: 'Reproduced behavior with a differing baseline and no surviving alternative explanation',
-        promotion: true,
+        verdict: 'REFUTED',
+        reason: 'Owner baseline and non-owner responses differ semantically — access appears differentiated',
+        false_positive_cause: 'differentiated access observed',
+        promotion: false,
       },
       evidenceIds,
     };
   }
-  if (anyUnknown) {
+
+  if (reproducesCheck === 'UNKNOWN' || baselineCheck === 'UNKNOWN') {
     return {
       kind: kindFor(input.hypothesis),
       status: 'INCONCLUSIVE',
@@ -228,15 +234,35 @@ export function evaluateVerification(input: VerificationEvidenceInput): Verifica
       evidenceIds,
     };
   }
+
+  // VERIFIED: the permissive access REPRODUCED and the non-owner response
+  // is semantically the SAME as the owner baseline (FAIL on "differs"):
+  // protected content reached the non-owner, with identity-bound data and
+  // no surviving alternative explanation.
+  if (reproducesCheck === 'PASS' && baselineCheck === 'FAIL' && sensitiveData) {
+    return {
+      kind: kindFor(input.hypothesis),
+      status: 'VERIFIED',
+      checklist: checks,
+      alternatives,
+      result: {
+        verdict: 'VERIFIED',
+        reason: 'Permissive access reproduced with the non-owner receiving owner-identical content; no alternative explanation survives',
+        promotion: true,
+      },
+      evidenceIds,
+    };
+  }
+
   return {
     kind: kindFor(input.hypothesis),
-    status: 'REFUTED',
+    status: 'INCONCLUSIVE',
     checklist: checks,
     alternatives,
     result: {
-      verdict: 'REFUTED',
-      reason: 'Baseline does not differ — the behavior is explainable without a vulnerability',
-      false_positive_cause: 'no differentiated access observed',
+      verdict: 'INCONCLUSIVE',
+      reason: 'Evidence does not support promotion or refutation yet (spec §103)',
+      missing_evidence: ['sensitivity evidence or reproduction evidence'],
       promotion: false,
     },
     evidenceIds,

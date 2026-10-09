@@ -11,6 +11,12 @@ controlled mutation + replay, Playwright browser service with
 identity-isolated contexts, network capture promoted to shared request
 records, multi-identity sessions, HAR import, artifact retrieval —
 implemented, built and tested.**
+**Part 4 of 8: the security reasoning engine — deterministic attack-surface
+extraction (endpoints/parameters/authorization matrix/objects/workflows/
+data flows), security signals, competing hypothesis candidates, test
+planning with information gain, semantic differential testing, skeptical
+verification with alternative explanations — implemented, built and
+tested.**
 
 > **Authorized use only.** This platform is built for authorized penetration
 > testing, local security laboratories, intentionally vulnerable
@@ -105,6 +111,46 @@ implemented, built and tested.**
 **383 automated tests** (unit / integration / security / e2e — including
 real-Chromium browser suites against a local lab fixture app) + a
 43-check smoke test, all green.
+
+
+## What Part 4 adds (real, runnable)
+
+- **Security reasoning engine** (`@aegis/reasoning`): transforms recorded
+  traffic into a structured security model — endpoints canonicalized and
+  deduplicated by fingerprint (`/api/orders/1` + `/api/orders/2` →
+  `/api/orders/{param}`), parameter registry with deterministic value
+  characteristics (UUID/JWT/timestamp/…) and semantic candidates,
+  authorization matrix (identity × endpoint × object × outcome), object
+  candidates with ownership, workflow reconstruction from observed
+  sequences, data flows, and a persistent attack-surface graph
+- **Security signals, not findings** (§136): the deterministic signal
+  engine emits CROSS_IDENTITY_DIFFERENCE, CROSS_IDENTITY_OBJECT_REFERENCE,
+  AUTH_STATE_CHANGE, REFLECTED_INPUT, ERROR_DISCLOSURE, TOKEN_PATTERN,
+  STATE_TRANSITION_ANOMALY, UNUSUAL_RESPONSE_DIFFERENCE, … — every signal
+  states it is not a conclusion
+- **Hypothesis candidates with competing interpretations** (§44-§47): every
+  suspicious signal yields a primary hypothesis PLUS alternatives (public
+  object / shared access / cache), each with required evidence and
+  distinguishing tests
+- **Test planning** (§48-§50, §118): deterministic fingerprints, explicit
+  preconditions (scope, identity, baseline, duplicate), expected
+  information gain that ranks tests by how well they separate competing
+  hypotheses — the Part 2 scheduler seam
+- **Differential engine** (§24-§28): semantic JSON/HTML/binary comparison
+  with volatile-field marking (timestamps/CSRF tokens marked, never
+  deleted), structural diffs, similarity scoring
+- **Skeptical verification** (§70-§75): tries to REFUTE first — anonymous
+  access, caching, shared access, reproduction, baseline comparison —
+  alternatives preserved for audit, dead ends recorded with reasons,
+  INCONCLUSIVE is a valid outcome
+- **Leader projection** (§120): compact, trust-separated security context
+  (counts and ids trusted; target-derived strings inside
+  UNTRUSTED_TARGET_DATA delimiters) feeding the Part 2 leader prompt
+- **3 worker tools**: `reasoning.query` (§80 focused attack-surface view),
+  `differential.compare`, `verification.evaluate` — all READ_ONLY,
+  engagement-bound, gateway-gated
+- **16 API routes** under `/api/engagements/:id/reasoning/*` + 11 new
+  migrations (041-051, 51 total) + 103 new tests (486 total)
 
 ## What is explicitly NOT implemented yet (by design)
 

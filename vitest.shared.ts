@@ -26,6 +26,7 @@ export function workspaceAliases(): Record<string, string> {
     'knowledge',
     'session-manager',
     'toolbox',
+    'reasoning',
   ];
   const aliases: Record<string, string> = {};
   for (const name of packages) {

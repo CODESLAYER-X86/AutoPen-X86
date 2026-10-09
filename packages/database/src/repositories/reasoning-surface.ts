@@ -69,6 +69,8 @@ export interface UpdateEndpointPatch {
   confidence?: number;
   merged_into?: string;
   last_seen?: string;
+  /** Sticky: once an authenticated identity reached it, it stays true (§11). */
+  authentication_observed?: boolean;
 }
 
 export class EndpointsRepository {
@@ -157,7 +159,7 @@ export class EndpointsRepository {
           },
         ]),
         JSON.stringify(input.contentType ? [input.contentType] : []),
-        false,
+        input.identityId !== null,
         JSON.stringify(input.identityId ? [input.identityId] : []),
         input.status,
         input.discoverySource,
@@ -188,6 +190,7 @@ export class EndpointsRepository {
          confidence = COALESCE($13, confidence),
          merged_into = COALESCE($14, merged_into),
          last_seen = COALESCE($15, last_seen),
+         authentication_observed = COALESCE($16, authentication_observed),
          updated_at = now()
        WHERE id = $1
        RETURNING *`,
@@ -207,6 +210,7 @@ export class EndpointsRepository {
         patch.confidence ?? null,
         patch.merged_into ?? null,
         patch.last_seen ?? null,
+        patch.authentication_observed ?? null,
       ],
     );
     if (!result.rows[0]) throw new Error(`Endpoint ${id} update failed`);
@@ -252,6 +256,7 @@ function mergeEndpoint(existing: EndpointRecord, input: UpsertEndpointInput): Up
   return {
     methods,
     identities_observed: mergeUnique(existing.identities_observed, input.identityId ? [input.identityId] : []),
+    authentication_observed: existing.authentication_observed || input.identityId !== null,
     observed_urls: mergeUniqueBounded(existing.observed_urls, [input.observedUrl], 16),
     content_types: mergeUnique(existing.content_types, input.contentType ? [input.contentType] : []),
     evidence_ids: mergeUniqueBounded(existing.evidence_ids, input.evidenceId ? [input.evidenceId] : [], 64),

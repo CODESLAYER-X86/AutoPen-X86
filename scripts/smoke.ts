@@ -429,6 +429,80 @@ try {
   await lab.close();
 }
 
+console.log('== part 4: security reasoning ==');
+// Reuse the p3 engagement's recorded traffic: ingest -> attack surface.
+r = await call('POST', `/api/engagements/${p3EngagementId}/reasoning/ingest`, { limit: 200 });
+const ingest = (r.json as { processed?: number; created_endpoints?: number; failures?: number }) ?? {};
+check(
+  'reasoning ingest processed recorded traffic (idempotent, §111)',
+  // created_endpoints is 0 when the dev DB already holds the endpoints —
+  // re-ingestion must never duplicate them (that IS the §111 property).
+  r.status === 200 && (ingest.processed ?? 0) >= 3 && (ingest.created_endpoints ?? 0) >= 0 && (ingest.failures ?? 0) === 0,
+  r,
+);
+
+r = await call('GET', `/api/engagements/${p3EngagementId}/reasoning/status`);
+const statusCounts = (r.json as { counts?: Record<string, number> })?.counts ?? {};
+check(
+  'reasoning status reports derived state',
+  r.status === 200 &&
+    (statusCounts.endpoints ?? 0) >= 1 &&
+    (statusCounts.parameters ?? 0) >= 0 &&
+    (statusCounts.matrix_entries ?? 0) >= 0,
+  statusCounts,
+);
+
+r = await call('GET', `/api/engagements/${p3EngagementId}/reasoning/endpoints`);
+const smokeEndpoints = ((r.json as { items?: Array<{ canonical_path: string }> })?.items ?? []).map((e) => e.canonical_path);
+check(
+  'endpoints discovered with canonical paths',
+  r.status === 200 && smokeEndpoints.some((path) => path === '/api/status') && smokeEndpoints.some((path) => path === '/login'),
+  smokeEndpoints,
+);
+
+r = await call('POST', `/api/engagements/${p3EngagementId}/reasoning/query`, {});
+const focused = (r.json as { endpoints?: unknown[]; parameters?: unknown[] }) ?? {};
+check(
+  'focused attack-surface query answers bounded',
+  r.status === 200 && (focused.endpoints ?? []).length >= 1 && (focused.endpoints ?? []).length <= 16,
+  { endpoints: (focused.endpoints ?? []).length },
+);
+
+r = await call('GET', `/api/engagements/${p3EngagementId}/reasoning/projection`);
+const projection = (r.json as { attack_surface?: { endpoint_count?: number }; recommended_tests?: unknown[] }) ?? {};
+check(
+  'leader security projection built (§120)',
+  r.status === 200 && (projection.attack_surface?.endpoint_count ?? 0) >= 1 && Array.isArray(projection.recommended_tests),
+  { endpoint_count: projection.attack_surface?.endpoint_count },
+);
+
+r = await call('GET', `/api/engagements/${p3EngagementId}/reasoning/test-candidates`);
+check(
+  'test candidates listed (§118 seam)',
+  r.status === 200 && Array.isArray((r.json as { items?: unknown[] })?.items),
+  r,
+);
+
+// Differential over two recorded requests of the same lab endpoint.
+const traffic = await call('GET', `/api/engagements/${p3EngagementId}/http/requests?limit=5`);
+const requestIds = ((traffic.json as { items?: Array<{ id: string }> })?.items ?? []).map((row) => row.id);
+if (requestIds.length >= 2) {
+  r = await call('POST', `/api/engagements/${p3EngagementId}/reasoning/differential`, {
+    baseline_request_id: requestIds[0],
+    candidate_request_id: requestIds[1],
+  });
+  check(
+    'differential comparison recorded (§25)',
+    r.status === 201 && /^DF[CR]_/.test((r.json as { id?: string })?.id ?? ''),
+    r,
+  );
+} else {
+  check('differential comparison recorded (§25)', false, { request_ids: requestIds.length });
+}
+
+r = await call('GET', `/api/engagements/${p3EngagementId}/reasoning/signals`);
+check('signals queryable', r.status === 200 && Array.isArray((r.json as { items?: unknown[] })?.items), r);
+
 console.log('== security headers ==');
 const response = await fetch(`${BASE}/api/meta`);
 check(

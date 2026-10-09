@@ -126,3 +126,17 @@ persisted outbound agent message for secret values and secret references.
 | Resource exhaustion | huge responses / WS frames | §48: maxResponseBytes/maxWebSocketMessageBytes with explicit truncation flags; request body limits; rate + concurrency admission (§53-§54) |
 | Tool registry poisoning | untrusted tool registration | §76: tools are trusted application configuration only; registry validates metadata at registration |
 | DNS rebinding | hostname re-resolution between checks | §52: destinations resolved at validation time per request; policy configurable for authorized labs |
+
+---
+
+# Part 4 — reasoning-layer threats
+
+| Threat | Vector | Mitigation |
+|---|---|---|
+| Prompt injection via derived state | target text flows into signal summaries / canonical paths / mutation values | §115-§116: the security projection is split at the trust boundary — counts/ids trusted, target-derived strings rendered inside `UNTRUSTED_TARGET_DATA` delimiters; verified by security tests with simulated injection text |
+| False-positive flood | unusual responses labelled vulnerabilities | §136 pipeline: observation → signal → hypothesis → test → evidence → verification; verifier actively refutes (public object, cache, shared access, non-reproduction); INCONCLUSIVE is a valid outcome (§103) |
+| Confirmation bias | same worker discovers and confirms | §73: verification is a separate, deterministic evaluation; promotion requires reproduction + owner-identical content + no surviving alternative |
+| Cross-engagement reasoning reads | tool input names a foreign engagement | §132: reasoning tools bind to the gateway execution context engagement; mismatches fail with `TOOL_ENGAGEMENT_MISMATCH` (tested) |
+| Pathological target floods the graph | unbounded derived state | §113: caps on nodes/edges/signals/parameters/endpoints/comparisons; `ReasoningLimitError` degrades to failure rows, never crashes (§112) |
+| LLM-driven policy change | model "grants" itself permissions | scope/policy/limits/identity access are deterministic engine inputs; test candidates carry preconditions the scheduler re-checks; tools stay READ_ONLY |
+| Sensitive value persistence | secrets in parameters/examples | sensitive parameter names store `«redacted»` values; JWT decode never claims verification (§59); secret material never enters derived rows |

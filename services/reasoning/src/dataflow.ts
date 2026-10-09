@@ -7,7 +7,7 @@
  * Causality is never claimed from temporal proximity alone (§95).
  */
 import { createHash } from 'node:crypto';
-import type { DataFlowRecord, EndpointRecord, ParameterRecord } from '@aegis/database';
+import type { EndpointRecord, ParameterRecord } from '@aegis/database';
 
 export interface FlowFact {
   source: Record<string, unknown>;

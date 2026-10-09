@@ -7,7 +7,6 @@
  * inferred with confidence (§35). Temporal order is preserved (§94).
  */
 import { createHash } from 'node:crypto';
-import type { EndpointRecord } from '@aegis/database';
 
 export interface SequenceStep {
   requestId: string;
@@ -39,20 +38,11 @@ const PAGE_STATE_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
 ];
 
 /** Derive a state name from one observed step (§31). */
-export function stateNameForStep(step: SequenceStep, nextStep: SequenceStep | null): StateNameResult {
-  // Resource-creating POSTs name the created resource state (§30 example).
-  if (step.method === 'POST' && step.status !== null && step.status >= 200 && step.status < 300) {
-    const resource = resourceFromPath(step.path);
-    if (resource) {
-      return {
-        name: `${resource}_CREATED`,
-        detection: { kind: 'response_status', method: step.method, path: step.path, status: step.status },
-        observed: true,
-        confidence: 0.85,
-      };
-    }
-  }
-  // State-changing sub-actions: POST /api/orders/{id}/pay -> ORDER_PAID.
+export function stateNameForStep(step: SequenceStep, _nextStep: SequenceStep | null): StateNameResult {
+  // State-changing sub-actions FIRST: POST /api/orders/{id}/pay -> ORDER_PAID.
+  // (Must precede the resource-created branch: a sub-action path also
+  // contains a plural resource segment, which would otherwise shadow the
+  // verb semantics.)
   if (step.method === 'POST' && step.status !== null && step.status >= 200 && step.status < 300) {
     const action = actionFromPath(step.path);
     const resource = action.resource;
@@ -62,6 +52,18 @@ export function stateNameForStep(step: SequenceStep, nextStep: SequenceStep | nu
         detection: { kind: 'response_status', method: step.method, path: step.path, status: step.status },
         observed: true,
         confidence: 0.8,
+      };
+    }
+  }
+  // Resource-creating POSTs name the created resource state (§30 example).
+  if (step.method === 'POST' && step.status !== null && step.status >= 200 && step.status < 300) {
+    const resource = resourceFromPath(step.path);
+    if (resource) {
+      return {
+        name: `${resource}_CREATED`,
+        detection: { kind: 'response_status', method: step.method, path: step.path, status: step.status },
+        observed: true,
+        confidence: 0.85,
       };
     }
   }
@@ -242,8 +244,10 @@ export function prerequisiteAnomalies(
 ): Array<{ triggerSummary: string; anomaly: 'PREREQUISITE_MISSING' | 'SKIPPED_TRANSITION'; detail: string }> {
   const anomalies: Array<{ triggerSummary: string; anomaly: 'PREREQUISITE_MISSING' | 'SKIPPED_TRANSITION'; detail: string }> = [];
   const verbOrder: Array<{ verb: RegExp; requires: RegExp }> = [
-    { verb: /^ORDER_CONFIRMED$/, requires: /^ORDER_PAID$/ },
-    { verb: /^ORDER_CONFIRMED$/, requires: /^ORDER_CREATED$/ },
+    // State names come from stateNameForStep: resource + verb.toUpperCase()
+    // (POST /api/orders/{id}/confirm -> ORDER_CONFIRM, .../pay -> ORDER_PAY).
+    { verb: /^ORDER_CONFIRM$/, requires: /^ORDER_PAY$/ },
+    { verb: /^ORDER_CONFIRM$/, requires: /^ORDER_CREATED$/ },
   ];
   for (const rule of verbOrder) {
     const targets = transitions.filter((transition) => rule.verb.test(transition.toStateName));

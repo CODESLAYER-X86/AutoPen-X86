@@ -32,6 +32,7 @@ import { telemetryRoutes } from './routes/telemetry.js';
 import { agentRoutes } from './routes/agent.js';
 import { httpRoutes } from './routes/http.js';
 import { browserRoutes } from './routes/browser.js';
+import { reasoningRoutes } from './routes/reasoning.js';
 
 export interface BuildAppOptions {
   config?: AppConfig;
@@ -97,10 +98,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     await authenticated.register(agentRoutes);
     await authenticated.register(httpRoutes);
     await authenticated.register(browserRoutes);
+    await authenticated.register(reasoningRoutes);
   });
 
   // Part 3 §75: browser cleanup even on graceful shutdown paths.
   app.addHook('onClose', async () => {
+    // Part 4 §109: stop the reasoning event subscription first so no new
+    // derived writes race the shutdown.
+    ctx.stopReasoning?.();
     const engagements = await ctx.pool
       .query<{ id: string }>('SELECT DISTINCT engagement_id AS id FROM browser_contexts')
       .then((result) => result.rows.map((row) => row.id))

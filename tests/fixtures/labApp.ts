@@ -40,6 +40,9 @@ const USERS: Record<string, LabUser> = {
 
 const SESSIONS = new Map<string, { user: string; role: string }>();
 
+/** Part 4 Fixture B: per-user workflow state (server-side). */
+const WORKFLOW_STATE = new Map<string, string>();
+
 function parseCookies(header: string | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   for (const pair of (header ?? '').split(';')) {
@@ -333,6 +336,158 @@ export function startLabApp(): Promise<LabApp> {
           viewer: user.user,
         }),
       );
+      return;
+    }
+
+    // --- Part 4 fixtures (spec §127) ---------------------------------------
+
+    // Fixture A: object-level endpoint with PROPER ownership enforcement
+    // (negative control for authorization reasoning). Order 1 -> usera,
+    // order 2 -> userb; admin sees everything; others get 403.
+    if (url.startsWith('/api/orders/') && /^\/api\/orders\/\d+$/.test(url) && method === 'GET') {
+      const orderId = Number(url.split('/').pop());
+      if (!user) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'authentication required' }));
+        return;
+      }
+      const order = orderId === 1 ? { id: 1, owner: 'usera', total: 100 } : orderId === 2 ? { id: 2, owner: 'userb', total: 200 } : null;
+      if (!order) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not found' }));
+        return;
+      }
+      if (user.role !== 'admin' && order.owner !== user.user) {
+        res.writeHead(403, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'forbidden' }));
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(order));
+      return;
+    }
+
+    // Fixture A: object-level endpoint with BROKEN ownership enforcement
+    // (the deliberate authorization flaw for the reasoning pipeline: any
+    // authenticated identity can read any note, including private data).
+    if (url.startsWith('/api/notes/') && /^\/api\/notes\/\d+$/.test(url) && method === 'GET') {
+      const noteId = Number(url.split('/').pop());
+      if (!user) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'authentication required' }));
+        return;
+      }
+      // Ownership NOT checked (intentional lab flaw): note 7 is usera's
+      // private note with identity-bound content.
+      const note =
+        noteId === 7
+          ? { id: 7, owner: 'usera', title: 'usera private note', content: 'usera-secret-note-content' }
+          : noteId === 8
+            ? { id: 8, owner: 'userb', title: 'userb private note', content: 'userb-secret-note-content' }
+            : null;
+      if (!note) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not found' }));
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(note));
+      return;
+    }
+
+    // Fixture B: workflow application (registration -> verification ->
+    // payment-like state -> confirmation). Server-side state per session.
+    if (url === '/api/workflow/register' && method === 'POST') {
+      if (!user) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'authentication required' }));
+        return;
+      }
+      const state = WORKFLOW_STATE.get(user.user) ?? 'REGISTERED';
+      WORKFLOW_STATE.set(user.user, state === 'NONE' ? 'REGISTERED' : state);
+      res.writeHead(201, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ state: 'REGISTERED', username: user.user }));
+      return;
+    }
+    if (url === '/api/workflow/verify' && method === 'POST') {
+      if (!user) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'authentication required' }));
+        return;
+      }
+      const state = WORKFLOW_STATE.get(user.user) ?? 'REGISTERED';
+      if (state !== 'REGISTERED') {
+        res.writeHead(409, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'invalid state transition', from: state, to: 'VERIFIED' }));
+        return;
+      }
+      WORKFLOW_STATE.set(user.user, 'VERIFIED');
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ state: 'VERIFIED' }));
+      return;
+    }
+    if (url === '/api/workflow/pay' && method === 'POST') {
+      if (!user) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'authentication required' }));
+        return;
+      }
+      const state = WORKFLOW_STATE.get(user.user) ?? 'REGISTERED';
+      if (state !== 'VERIFIED') {
+        res.writeHead(409, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'invalid state transition', from: state, to: 'PAID' }));
+        return;
+      }
+      WORKFLOW_STATE.set(user.user, 'PAID');
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ state: 'PAID' }));
+      return;
+    }
+    if (url === '/api/workflow/confirm' && method === 'POST') {
+      if (!user) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'authentication required' }));
+        return;
+      }
+      // Business-logic flaw (deliberate lab flaw for §36/§122): confirmation
+      // does NOT check that the workflow is in the PAID state.
+      WORKFLOW_STATE.set(user.user, 'CONFIRMED');
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ state: 'CONFIRMED', note: 'confirmed without checking payment state' }));
+      return;
+    }
+    if (url === '/api/workflow/status' && method === 'GET') {
+      if (!user) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'authentication required' }));
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ state: WORKFLOW_STATE.get(user.user) ?? 'REGISTERED' }));
+      return;
+    }
+
+    // Fixture C: dynamic API — pagination, volatile timestamps, and a
+    // schema-varying variant (differential testing surface).
+    if (url === '/api/items' && method === 'GET') {
+      const page = Number(new URL(req.url ?? '/', `http://${req.headers.host}`).searchParams.get('page') ?? '1');
+      const items = [
+        { id: page * 2 - 1, name: `item-${page * 2 - 1}`, generated_at: new Date().toISOString() },
+        { id: page * 2, name: `item-${page * 2}`, generated_at: new Date().toISOString() },
+      ];
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ page, total_pages: 3, items }));
+      return;
+    }
+    if (url === '/api/items/vary' && method === 'GET') {
+      // Response schema varies by ?mode= (schema-diff surface, §26).
+      const mode = new URL(req.url ?? '/', `http://${req.headers.host}`).searchParams.get('mode') ?? 'a';
+      const body =
+        mode === 'a'
+          ? { id: 1, name: 'alpha', generated_at: new Date().toISOString() }
+          : { id: 1, name: 'alpha', generated_at: new Date().toISOString(), debug_trace: 'internal /app/handlers/items.py', stack: 'at handler (/app/main.py)' };
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(body));
       return;
     }
 

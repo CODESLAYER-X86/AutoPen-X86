@@ -141,6 +141,8 @@ export interface ObservedEndpoint {
   canonicalPath: string;
   canonicalConfidence: number;
   confidenceCategory: ConfidenceCategory;
+  /** Record-level confidence (0-1) distinct from canonical-path confidence. */
+  confidence: number;
   resourceFamily: string;
   apiVersion: string | null;
   status: EndpointStatus;
@@ -165,6 +167,9 @@ export function deriveEndpoint(input: ObserveEndpointInput): ObservedEndpoint | 
     canonicalPath,
     canonicalConfidence: templated ? 0.55 : 1,
     confidenceCategory: 'OBSERVED',
+    // Directly observed endpoint: existence is a fact (§13 OBSERVED), so
+    // record confidence reflects only single-source observation.
+    confidence: 1,
     resourceFamily: resourceFamilyOf(canonicalPath),
     apiVersion: apiVersionOf(canonicalPath),
     status: 'OBSERVED',

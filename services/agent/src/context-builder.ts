@@ -15,6 +15,7 @@
 
 import type { Repositories, TaskRecord } from '@aegis/database';
 import type { ToolRegistry } from '@aegis/tools';
+import type { SecurityContextProvider, SecurityProjection } from '@aegis/contracts';
 import type { QuotaSnapshot, TokenBudgeter } from './quota.js';
 import { estimateTokens } from './quota.js';
 
@@ -52,12 +53,16 @@ export interface StrategicContext {
     observation_details: Array<Record<string, unknown>>;
     evidence_summaries: Array<Record<string, unknown>>;
     ctf: Record<string, unknown> | null;
+    /** Part 4 §115/§116: signal/test text derived from untrusted target data. */
+    security_projection: Record<string, unknown> | null;
   };
 }
 
 export interface ContextBuilderDeps {
   repos: Repositories;
   tools: ToolRegistry;
+  /** Part 4 §120: compact security projection provider (optional seam). */
+  security?: SecurityContextProvider;
 }
 
 export const DEFAULT_MAX_CONTEXT_TOKENS = 24_000;
@@ -65,6 +70,7 @@ export const DEFAULT_MAX_CONTEXT_TOKENS = 24_000;
 /** §7 priority order — indices reduce LAST to FIRST when shrinking. */
 const REDUCTION_ORDER = [
   'historical_background',
+  'security_projection',
   'recent_tests',
   'dead_ends',
   'findings_detail',
@@ -105,6 +111,13 @@ export class ContextBuilder {
       throw Object.assign(new Error(`Engagement ${engagementId} not found`), { code: 'ENGAGEMENT_NOT_FOUND' });
     }
 
+    // Part 4 §120: deterministic security projection. Failures degrade to
+    // the Part 2-only projection (the leader still works, §112 isolation).
+    const securityProjection = this.deps.security
+      ? await this.deps.security.buildSecurityProjection(engagementId).catch(() => null)
+      : null;
+    const projection = securityProjection ? splitProjection(securityProjection) : null;
+
     // --- Trusted projection: structured facts over prose (§15) ---
     const trusted: StrategicContext['trusted'] = {
       engagement: {
@@ -141,6 +154,9 @@ export class ContextBuilder {
         target_count: targets.length,
         targets: targets.slice(0, 20).map((t) => ({ id: t.id, type: t.type, value: t.value })),
         discovered_endpoints: summarizeEndpoints(observations),
+        // Part 4 §120: counts + ids only (trusted); string-bearing detail is
+        // routed to the untrusted projection below (§115/§116).
+        ...(projection ? { security_projection: projection.trusted_summary } : {}),
       },
       workflow_state: {
         strategy: strategies
@@ -218,6 +234,7 @@ export class ContextBuilder {
               known_constraints: [],
             }
           : null,
+      security_projection: projection ? projection.untrusted_detail : null,
     };
 
     return this.reduceToBudget({ trusted, untrusted }, input.maxContextTokens);
@@ -249,6 +266,19 @@ export class ContextBuilder {
               findings: c.trusted.findings.slice(0, 5),
               dead_ends: c.trusted.dead_ends.slice(0, 5),
               recent_tests: c.trusted.recent_tests.slice(0, 8),
+            },
+          }));
+          break;
+        case 'security_projection':
+          // Part 4 §120 detail is supplementary: shrink untrusted detail
+          // first, then drop it entirely before touching Part 2 core fields.
+          applyReducer((c) => ({
+            ...c,
+            untrusted: {
+              ...c.untrusted,
+              security_projection: c.untrusted.security_projection
+                ? shrinkSecurityDetail(c.untrusted.security_projection)
+                : null,
             },
           }));
           break;
@@ -386,6 +416,83 @@ function firstString(...values: unknown[]): string | null {
     if (typeof value === 'string' && value.length > 0) return value;
   }
   return null;
+}
+
+/** Halve the Part 4 untrusted detail, then null it (supplementary context). */
+function shrinkSecurityDetail(detail: Record<string, unknown>): Record<string, unknown> | null {
+  const shrunk: Record<string, unknown> = {};
+  let remaining = 0;
+  for (const [key, value] of Object.entries(detail)) {
+    if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+      shrunk[key] = value.slice(0, Math.max(1, Math.floor(value.length / 2)));
+      remaining += (shrunk[key] as unknown[]).length;
+    } else {
+      shrunk[key] = value;
+      remaining += 1;
+    }
+  }
+  return remaining > 0 ? shrunk : null;
+}
+
+/**
+ * Split a Part 4 security projection (§120) along the trust boundary.
+ *
+ * TRUSTED: counts, ids, statuses, priorities, confidences — application
+ * bookkeeping the target cannot control.
+ * UNTRUSTED: signal summaries, canonical paths, mutation values and
+ * rationales — strings derived from target-controlled data (§115/§116).
+ */
+function splitProjection(
+  projection: SecurityProjection,
+): { trusted_summary: Record<string, unknown>; untrusted_detail: Record<string, unknown> } {
+  return {
+    trusted_summary: {
+      endpoint_count: projection.attack_surface.endpoint_count,
+      resource_family_count: projection.attack_surface.resource_family_count,
+      identity_count: projection.attack_surface.identity_count,
+      workflow_count: projection.attack_surface.workflow_count,
+      parameter_count: projection.attack_surface.parameter_count,
+      object_count: projection.attack_surface.object_count,
+      top_endpoints: projection.attack_surface.top_endpoints.map((endpoint) => ({
+        id: endpoint.id,
+        method_summary: endpoint.method_summary,
+        status: endpoint.status,
+        priority: endpoint.priority,
+      })),
+      active_hypotheses: projection.active_hypotheses.map((hypothesis) => ({
+        id: hypothesis.id,
+        confidence: hypothesis.confidence,
+      })),
+      recommended_tests: projection.recommended_tests.map((test) => ({
+        hypothesis_id: test.hypothesis_id,
+        test_type: test.test_type,
+        endpoint_id: test.endpoint_id,
+        baseline_identity: test.baseline_identity,
+        candidate_identity: test.candidate_identity,
+        mutation_category: test.mutation_category,
+        expected_information_gain: test.expected_information_gain,
+        estimated_cost: test.estimated_cost,
+        priority: test.priority,
+        fingerprint: test.fingerprint,
+        preconditions: test.preconditions,
+      })),
+    },
+    untrusted_detail: {
+      interesting: projection.interesting,
+      top_endpoint_paths: projection.attack_surface.top_endpoints.map((endpoint) => ({
+        id: endpoint.id,
+        canonical_path: endpoint.canonical_path,
+      })),
+      hypothesis_statements: projection.active_hypotheses,
+      recommended_test_mutations: projection.recommended_tests.map((test) => ({
+        fingerprint: test.fingerprint,
+        base_request_id: test.base_request_id,
+        mutations: test.mutations,
+        rationale: test.rationale,
+      })),
+    },
+  };
 }
 
 function firstStringFromObservations(

@@ -106,3 +106,21 @@ duplicate audit records (§65).
 Each browser action boundary flushes the structured event buffer; network
 captures additionally emit the HTTP record events through the traffic
 recorder. Every event payload is bounded and redacted upstream (§66).
+
+---
+
+# Part 4 — reasoning events
+
+Derived-state events published by the reasoning processor (all carry
+deterministic `dedup_key`s; reprocessing is idempotent, §111):
+
+ENDPOINT_DISCOVERED, ENDPOINT_CANONICALIZED, AUTHORIZATION_MATRIX_UPDATED,
+SECURITY_SIGNAL_CREATED, OBJECT_CANDIDATE_UPSERTED, WORKFLOW_RECONSTRUCTED,
+WORKFLOW_TRANSITION_RECORDED, AUTH_BOUNDARY (as WORKFLOW_TRANSITION_RECORDED
+with `auth_boundary: true`), DIFFERENTIAL_COMPARISON_RECORDED,
+VERIFICATION_CREATED, VERIFICATION_COMPLETED, REASONING_INGEST_COMPLETED.
+
+Consumption: the processor itself subscribes to Part 3 events
+(HTTP_REQUEST_RECORDED, DOM_SNAPSHOT_CAPTURED, SESSION_EXPIRATION_DETECTED,
+auth-workflow events) per §109; raw events remain durable even when an
+extractor fails (§110, §112).

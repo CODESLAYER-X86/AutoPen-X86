@@ -23,6 +23,8 @@ import { HttpEngine, HttpTrafficRecorder, LAB_NETWORK_POLICY, DEFAULT_NETWORK_PO
 import { SessionManager } from '@aegis/session-manager';
 import { BrowserService, DEFAULT_LAUNCH_OPTIONS } from '@aegis/browser';
 import { createPart3Tools } from '@aegis/toolbox';
+import { createPart4Tools } from '@aegis/toolbox';
+import { SecurityReasoningEngine } from '@aegis/reasoning';
 import { ConfigurationError, type ModelRole } from '@aegis/shared';
 import { AgentEngineRegistry } from './agent-engine.js';
 
@@ -45,6 +47,10 @@ export interface AppContext {
   trafficRecorder: HttpTrafficRecorder;
   sessionManager: SessionManager;
   browserService: BrowserService;
+  /** Part 4 — security reasoning engine (null when disabled by config). */
+  reasoning: SecurityReasoningEngine | null;
+  /** Stops the reasoning event subscription (called on app close). */
+  stopReasoning: () => void;
   /** Route-level audit trail (spec §30). */
   audit: (entry: {
     actorUserId: string | null;
@@ -193,6 +199,42 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
       }),
     );
   }
+
+  // --- Part 4: security reasoning engine (§108, §109, §113) ------------
+  // Deterministic intelligence over captured observations. Subscribes to
+  // the event bus so derived state updates as traffic arrives; failures are
+  // isolated per event (§112) and never surface as engagement errors.
+  let reasoningEngine: SecurityReasoningEngine | null = null;
+  let stopReasoning: () => void = () => undefined;
+  if (config.features.securityReasoning) {
+    reasoningEngine = new SecurityReasoningEngine({
+      repos,
+      eventBus,
+      logger,
+      limits: {
+        maxGraphNodes: config.reasoning.maxGraphNodes,
+        maxGraphEdges: config.reasoning.maxGraphEdges,
+        maxSignals: config.reasoning.maxSignals,
+        maxParameters: config.reasoning.maxParameters,
+        maxEndpoints: config.reasoning.maxEndpoints,
+        maxObjects: config.reasoning.maxObjects,
+        maxExampleValues: config.reasoning.maxExampleValues,
+        maxComparisonBytes: config.reasoning.maxComparisonBytes,
+        maxMutationCandidates: config.reasoning.maxMutationCandidates,
+      },
+      // Destructive test planning follows the engagement security policy
+      // (§132): the engine only PLANS candidates; execution stays gated.
+      allowDestructive: false,
+    });
+    toolRegistry.registerAll(
+      createPart4Tools({
+        reasoning: reasoningEngine,
+        repos,
+        eventBus,
+      }),
+    );
+    stopReasoning = reasoningEngine.processor.subscribe();
+  }
   const toolGateway = new ToolGateway(toolRegistry);
 
   const modelRouter = new ModelRouter({
@@ -208,6 +250,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     modelRouter,
     toolRegistry,
     toolGateway,
+    security: reasoningEngine ?? undefined,
   });
 
   const orchestratorWithAgent = new OrchestratorService({
@@ -239,6 +282,8 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     trafficRecorder,
     sessionManager,
     browserService,
+    reasoning: reasoningEngine,
+    stopReasoning,
     audit: async (entry) => {
       await repos.audit.create(entry);
     },

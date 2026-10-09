@@ -6,7 +6,7 @@
  * external exposure, parameter richness, observed anomalies, business
  * importance. The ranking is a SUGGESTION — the leader can override (§85).
  */
-import type { EndpointRecord, ObjectCandidateRecord, ParameterRecord, WorkflowTransitionRecord } from '@aegis/database';
+import type { EndpointRecord, ObjectCandidateRecord, ParameterRecord } from '@aegis/database';
 
 export interface PrioritizationFactors {
   authenticationBoundary: number;

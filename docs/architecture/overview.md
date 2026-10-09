@@ -211,3 +211,97 @@ Services added in Part 3: `@aegis/target-http` (engine, mutation, recorder,
 HAR import, URL policy), `@aegis/session-manager` (identity auth state),
 `@aegis/browser` (Playwright service), `@aegis/toolbox` (the real tool
 implementations registered by the composition root).
+
+---
+
+# Part 4 — Security Reasoning Engine
+
+Part 3 gave the platform hands. Part 4 gives it judgment: the deterministic
+security-reasoning layer that transforms recorded observations (HTTP
+exchanges, browser events, DOM snapshots, WebSocket messages, identities,
+sessions) into a structured, skeptical, evidence-driven security model.
+
+The central principle (spec Part 4 §0, §136):
+
+> **Do not ask an LLM to rediscover structure that deterministic software
+> can extract. And never treat an observation as a vulnerability.**
+
+```text
+raw observations (HTTP/browser/WS/DOM)
+        |
+        v
+  observation normalizer (event-driven, §109)
+        |
+        +------------------+------------------+
+        |                  |                  |
+        v                  v                  v
+  endpoint/parameter   identity/session   workflow/state
+  extraction (§7-§18)  mapping (§20-§23)  reconstruction (§30-§35)
+        |                  |                  |
+        +--------+---------+--------+---------+
+                 |                  |
+                 v                  v
+      attack-surface graph    data-flow engine (§37-§41)
+      (nodes+edges, §4-§6)          |
+                 |                  |
+                 +--------+---------+
+                          |
+                          v
+              security signal engine (§42-§43)
+              (signals are NOT findings)
+                          |
+                          v
+              hypothesis engine seam (§44-§47)
+              (competing interpretations)
+                          |
+                          v
+              test planner (§48-§50, §118)
+              (deterministic fingerprints,
+               preconditions, information gain)
+                          |
+                          v
+              differential engine (§24-§28)
+              (semantic comparison, volatile filtering)
+                          |
+                          v
+              verification engine (§70-§75)
+              (skeptical: tries to REFUTE first;
+               alternatives preserved; dead ends recorded)
+                          |
+                          v
+              leader projection (§120)
+              (compact, trust-separated)
+```
+
+Key properties:
+
+* **OBSERVATION ≠ VULNERABILITY** (§136): the pipeline is
+  observation → signal → hypothesis → test → evidence → verification →
+  finding. Nothing is promoted without the full chain; the verifier
+  actively seeks alternative explanations (public object, cache, shared
+  access, non-reproduction) and records them.
+* **Deterministic-first** (§83): endpoints, parameters, value
+  characteristics, JWT structure, object candidates, workflows, differentials
+  and fingerprints are computed by parsers — the LLM only interprets,
+  prioritizes and decides.
+* **Idempotent ingestion** (§111): every derived record is keyed by a
+  deterministic fingerprint; reprocessing an event never duplicates
+  endpoints, parameters, matrix cells, signals or flows.
+* **Failure isolation** (§112): a crashing extractor records a
+  `reasoning_failures` row and processing continues — the engagement never
+  fails because the reasoning layer hiccuped.
+* **Trust separation** (§115-§116): all target-derived text (signal
+  summaries, canonical paths, mutation values) is rendered inside the
+  leader prompt's `UNTRUSTED_TARGET_DATA` delimiters; counts and ids stay
+  trusted. Scope, policy, limits and identity access remain deterministic
+  and outside LLM control (§132).
+* **Resource limits** (§113): graph nodes/edges, signals, parameters,
+  endpoints, comparison bytes and mutation candidates are all capped.
+
+Services added in Part 4: `@aegis/reasoning` (the engine: processor,
+extractors, differential, signals, hypotheses, test planner, mutation
+strategies, token analysis, object model, workflow engine, data-flow,
+graph, verification, prioritization, projection, limits) plus three
+read-only worker tools in `@aegis/toolbox` (`reasoning.query` §80,
+`differential.compare` §118, `verification.evaluate` §72) and 16 API
+routes under `/api/engagements/:id/reasoning/*`.
