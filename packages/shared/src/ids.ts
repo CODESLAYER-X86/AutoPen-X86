@@ -115,7 +115,17 @@ export type IdPrefix =
   | 'EMC' // evaluation model config snapshot
   | 'GRN' // golden run reference
   | 'FLE' // finding lifecycle event
-  | 'FEQ'; // finding evidence quality row
+  | 'FEQ' // finding evidence quality row
+  // Part 8 prefixes (production hardening).
+  | 'AKC' // api credential (api key / PAT)
+  | 'SEV' // security event
+  | 'INC' // security incident
+  | 'CGR' // credential grant (scoped worker credential)
+  | 'SCV' // scope version
+  | 'CBX' // circuit breaker state row
+  | 'OBX' // outbox event row
+  | 'RTP' // retention policy row
+  | 'BKP' // backup record;
 
 /** Matches `<PREFIX>_<16..32 base32 chars>` and is case sensitive. */
 export const ID_PATTERN = /^[A-Z]{2,6}_[A-Z2-7]{16,32}$/;

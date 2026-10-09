@@ -29,6 +29,7 @@ export function workspaceAliases(): Record<string, string> {
     'reasoning',
     'autonomous-engine',
     'verification-reporting',
+    'production-hardening',
   ];
   const aliases: Record<string, string> = {};
   for (const name of packages) {

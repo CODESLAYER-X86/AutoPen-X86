@@ -1,6 +1,7 @@
 /** Typed error handler + 404 handler: normalized JSON error envelopes. */
 import type { FastifyInstance } from 'fastify';
-import { ValidationError, isPlatformError } from '@aegis/shared';
+import { ScopeViolationError, ValidationError, isPlatformError } from '@aegis/shared';
+import { EmergencyStopError } from '@aegis/hardening';
 
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setNotFoundHandler((request, reply) => {
@@ -16,6 +17,34 @@ export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
     const requestId = request.id;
     const log = request.server.ctx?.logger;
+
+    // Part 8 §49/§94: scope violations raise a security event for the
+    // metrics + incident layer. Best-effort: observability never blocks the
+    // error response path.
+    if (error instanceof ScopeViolationError && request.server.ctx?.hardening) {
+      request.server.ctx.hardening.securityEvents
+        .raise({
+          category: 'SCOPE_DENIAL',
+          actor: request.user ? 'USER' : 'PLATFORM',
+          engagementId: (request.params as { id?: string } | undefined)?.id ?? null,
+          description: `Scope violation: ${error.message}`,
+          metadata: { code: error.code, request_id: requestId },
+        })
+        .catch(() => undefined);
+    }
+
+    // Part 8 §89: the emergency stop blocks target-bound actions with a
+    // deterministic, non-internal error (never a 500).
+    if (error instanceof EmergencyStopError) {
+      reply.status(403).send({
+        error: {
+          code: 'EMERGENCY_STOP_ENGAGED',
+          message: error.message,
+          request_id: requestId,
+        },
+      });
+      return;
+    }
 
     if (isPlatformError(error)) {
       const errorBody: Record<string, unknown> = {

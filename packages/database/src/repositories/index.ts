@@ -4,6 +4,18 @@ import { AgentMessagesRepository } from './agent-messages.js';
 import { AgentRunsRepository } from './agent-runs.js';
 import { AssetsRepository } from './assets.js';
 import { AuditRepository } from './audit.js';
+import {
+  ApiCredentialsRepository,
+  BackupRecordsRepository,
+  CircuitBreakersRepository,
+  CredentialGrantsRepository,
+  EmergencyStopRepository,
+  IncidentsRepository,
+  OutboxRepository,
+  RetentionPoliciesRepository,
+  ScopeVersionsRepository,
+  SecurityEventsRepository,
+} from './hardening.js';
 import { AuthSessionsRepository } from './auth-sessions.js';
 import { DeadEndsRepository } from './dead-ends.js';
 import { EngagementsRepository } from './engagements.js';
@@ -112,6 +124,17 @@ export interface Repositories {
   events: EventsRepository;
   audit: AuditRepository;
   evidence: EvidenceRepository;
+  // Part 8 — production hardening repositories.
+  apiCredentials: ApiCredentialsRepository;
+  credentialGrants: CredentialGrantsRepository;
+  scopeVersions: ScopeVersionsRepository;
+  securityEvents: SecurityEventsRepository;
+  incidents: IncidentsRepository;
+  circuitBreakers: CircuitBreakersRepository;
+  outbox: OutboxRepository;
+  retentionPolicies: RetentionPoliciesRepository;
+  backupRecords: BackupRecordsRepository;
+  emergencyStop: EmergencyStopRepository;
   // Part 2 — Agent Operating System repositories.
   agentRuns: AgentRunsRepository;
   agentDecisions: AgentDecisionsRepository;
@@ -280,6 +303,17 @@ export function createRepositories(pool: Pool): Repositories {
     evaluationObservedFindings: new EvaluationObservedFindingsRepository(pool),
     evaluationModelConfigs: new EvaluationModelConfigsRepository(pool),
     regressionChecks: new RegressionChecksRepository(pool),
+    // Part 8 — production hardening repositories.
+    apiCredentials: new ApiCredentialsRepository(pool),
+    credentialGrants: new CredentialGrantsRepository(pool),
+    scopeVersions: new ScopeVersionsRepository(pool),
+    securityEvents: new SecurityEventsRepository(pool),
+    incidents: new IncidentsRepository(pool),
+    circuitBreakers: new CircuitBreakersRepository(pool),
+    outbox: new OutboxRepository(pool),
+    retentionPolicies: new RetentionPoliciesRepository(pool),
+    backupRecords: new BackupRecordsRepository(pool),
+    emergencyStop: new EmergencyStopRepository(pool),
   };
 }
 

@@ -89,6 +89,21 @@ export const EnvSchema = z.object({
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
     .default(true),
+  // Part 8: production hardening engine — on by default; security controls
+  // fail closed and are never opt-out for convenience (spec §67).
+  FEATURE_HARDENING: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())))
+    .default(true),
+  // Part 8 §5: internal service-token signing secret (separate from user
+  // auth secrets; production loads it from the secret store).
+  INTERNAL_SERVICE_TOKEN_SECRET: z.string().min(16).default('dev-internal-service-secret-32bytes'),
+  // Part 8 §11: default API credential TTL (hours).
+  HARDENING_API_KEY_TTL_HOURS: z.number().int().min(1).max(8760).default(720),
+  // Part 8 §14: default credential grant TTL (minutes).
+  HARDENING_GRANT_TTL_MINUTES: z.number().int().min(1).max(1440).default(60),
+  // Part 8 §98: circuit breaker default threshold (per-category overrides).
+  HARDENING_BREAKER_DEFAULT_THRESHOLD: z.number().int().min(1).max(100).default(5),
   // Part 4: the security reasoning engine is implemented — enabled by
   // default; operators can opt out per deployment.
   FEATURE_SECURITY_REASONING: z
@@ -245,6 +260,14 @@ export interface AppConfig {
     securityReasoning: boolean;
     autonomousEngine: boolean;
     evaluation: boolean;
+    hardening: boolean;
+  };
+  /** Part 8: production hardening settings (spec Part 8 §5, §11, §14, §98). */
+  hardening: {
+    internalServiceTokenSecret: string;
+    apiKeyTtlHours: number;
+    grantTtlMinutes: number;
+    breakerDefaultThreshold: number;
   };
   /** Part 4: reasoning engine resource limits (spec §113). */
   reasoning: {

@@ -1,6 +1,6 @@
 {
   "name": "aegis-platform",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Autonomous web security testing and CTF-solving platform \u2014 Part 1 foundation (authorized use only)",
   "license": "UNLICENSED",
@@ -30,7 +30,10 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:security": "vitest run --config vitest.security.config.ts",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "backup": "tsx scripts/ops/backup.ts",
+    "restore": "tsx scripts/ops/restore.ts",
+    "deps:audit": "tsx scripts/ops/check-deps.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.14.0",

@@ -184,4 +184,18 @@ export class HttpResponsesRepository {
     );
     return result.rows as Record<string, unknown>[];
   }
+
+  /**
+   * Part 8 §59: retention sweep for stored HTTP responses (bodies live in
+   * object storage; row deletion is the index of record).
+   */
+  async deleteOlderThan(days: number, limit: number): Promise<number> {
+    const result = await this.pool.query(
+      `DELETE FROM http_responses WHERE id IN (
+         SELECT id FROM http_responses WHERE created_at < now() - ($1 || ' days')::interval LIMIT $2
+       )`,
+      [String(days), Math.min(Math.max(limit, 1), 5000)],
+    );
+    return result.rowCount ?? 0;
+  }
 }

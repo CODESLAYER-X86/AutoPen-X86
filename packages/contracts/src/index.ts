@@ -17,3 +17,4 @@ export * from './knowledge.js';
 export * from './autonomous.js';
 export * from './reporting.js';
 export * from './evaluation.js';
+export * from './hardening.js';

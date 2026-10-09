@@ -47,6 +47,20 @@ export class EventsRepository implements RepoBase {
     );
     return result.rows.map(mapEvent);
   }
+
+  /**
+   * Part 8 §59: retention sweep for the engagement event log. Bounded batch
+   * delete; returns the number of rows removed.
+   */
+  async deleteOlderThan(days: number, limit: number): Promise<number> {
+    const result = await this.pool.query(
+      `DELETE FROM events WHERE id IN (
+         SELECT id FROM events WHERE occurred_at < now() - ($1 || ' days')::interval LIMIT $2
+       )`,
+      [String(days), Math.min(Math.max(limit, 1), 5000)],
+    );
+    return result.rowCount ?? 0;
+  }
 }
 
 type EventRow = {

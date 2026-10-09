@@ -190,3 +190,24 @@ persisted outbound agent message for secret values and secret references.
 | Prompt injection through evaluation fixture content (§78) | Injection text stays untrusted data; scope/policy rows are verified unchanged after ingestion |
 | Rejected reports being exported anyway (§65) | Export route refuses REJECTED reports; validation gate runs before any artifact is written |
 | False-positive regressions shipping as "improvements" (§88) | Release gates: precision/recall drop thresholds, FPR rise thresholds, zero scope violations, zero unsupported claims — all configurable (§89) |
+
+## Part 8 — Production Hardening
+
+| Threat | Mitigation |
+| --- | --- |
+| Malicious user / compromised account (§3) | Session + API-key authn with lifecycle (owner, scopes, expiry, last_used, revocation); rate limiting at user level; ownership guards on every route |
+| Prompt-injected target / malicious webpage / artifact (§3, §19-§20, §35-§36) | Trust levels in code (TRUSTED/SEMI/UNTRUSTED tags); envelope wrapping by the platform, never the payload; artifact content-sniffing + active-content quarantine; compression-bomb and archive-traversal guards |
+| Compromised worker (§8, §72) | Zero-trust internal authn (HMAC-signed, subject+capability scoped tokens); credential grants bound to engagement/identity/target/purpose with TTL; capability minimization from Part 3/5 gateways; blast radius = one engagement |
+| Credential leakage (§13, §93) | Secrets only in the encrypted store; hashes never plaintext; revocation kill switches at grant/engagement/platform level; CREDENTIAL_ACCESS security events on every resolution |
+| Scope configuration error / accidental expansion (§91-§92) | Scope versioning with deterministic diffs and explicit activation; historical actions attributable to their version; scope immutable while running |
+| SSRF-style infrastructure abuse (§25, §76-§77) | URL policy resolves DNS before connecting (rebinding awareness), classifies loopback/private/link-local/metadata; research egress guard with its own allowlist |
+| Resource exhaustion (§29-§31) | Response size caps with explicit truncation; compression-bomb declared-size guards; bounded queues/batches everywhere (outbox, retention, sweeps) |
+| Queue duplication / event loss (§44-§45) | Transactional outbox with per-aggregate sequences, at-least-once delivery, idempotent consumers; abandoned events are visible, never silent |
+| Audit log tampering (§85-§86) | SHA-256 hash chain per record (canonical jsonb form), advisory-locked appends, verification endpoint detects content edits, reorderings and deletions |
+| Runaway / policy-violating agent or model (§97-§99) | Deterministic circuit breakers per (subject, category) with thresholds; OPEN state requires a human reset; violations counted server-side |
+| Cross-tenant data access (§6-§8) | Application-level ownership on every query plus PostgreSQL RLS (aegis_app role, tenant GUC) as defense in depth — tested with SET ROLE in the security suite |
+| Unstoppable runaway platform (§89-§90) | Global emergency stop: deterministic, LLM-independent, persisted (survives restarts), cancels pending tasks + revokes all grants, blocks every target-bound route |
+| Silent security-relevant behaviour (§49, §94-§96) | Security events at every control point (scope denials, injection detections, credential accesses, breaker trips); HIGH/CRITICAL auto-open incidents with timelines; metrics endpoint |
+| Unverified backups (§62-§63) | Backup + verified-restore tooling (row-count + content-hash equality against the manifest) runs in the automated suite; restore-verified timestamps recorded |
+| Supply-chain compromise (§69-§70) | Lockfile-only installs, npm-audit gate failing closed on high/critical production advisories, minimal deps; known fastify advisory documented with upgrade path |
+| Development conveniences leaking to production (§74, §67) | Hardening feature fails closed; 501 honest when disabled; secrets via references; dev-only knobs never default on |

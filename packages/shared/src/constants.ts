@@ -255,6 +255,25 @@ export const EVENT_TYPES = [
   'REGRESSION_CHECK_COMPLETED',
   'RELEASE_GATE_DECIDED',
   'GOLDEN_RUN_SAVED',
+  // Part 8 — production hardening events.
+  'SECURITY_EVENT_RAISED',
+  'INCIDENT_OPENED',
+  'INCIDENT_RESOLVED',
+  'EMERGENCY_STOP_ENGAGED',
+  'EMERGENCY_STOP_RELEASED',
+  'CREDENTIAL_REVOKED',
+  'API_CREDENTIAL_CREATED',
+  'API_CREDENTIAL_REVOKED',
+  'CREDENTIAL_GRANT_ISSUED',
+  'CREDENTIAL_GRANT_REVOKED',
+  'SCOPE_VERSION_PROPOSED',
+  'SCOPE_VERSION_ACTIVATED',
+  'CIRCUIT_BREAKER_TRIPPED',
+  'CIRCUIT_BREAKER_RESET',
+  'OUTBOX_EVENT_DELIVERED',
+  'RETENTION_POLICY_APPLIED',
+  'BACKUP_COMPLETED',
+  'AUDIT_CHAIN_VERIFIED',
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -609,8 +628,79 @@ export const SESSION_EXPIRATION_SIGNALS = [
 ] as const;
 export type SessionExpirationSignal = (typeof SESSION_EXPIRATION_SIGNALS)[number];
 
-export const PLATFORM_VERSION = '0.7.0-part7';
+export const PLATFORM_VERSION = '0.8.0-part8';
 export const PLATFORM_NAME = 'Aegis Platform';
+
+// ---------------------------------------------------------------------------
+// Part 8 — Production Hardening domain enums (spec Part 8 §4, §11, §15, §44,
+// §59, §75, §89, §91, §94-§99).
+// ---------------------------------------------------------------------------
+
+/** Trust levels for data crossing system boundaries (spec Part 8 §4). */
+export const TRUST_LEVELS = ['TRUSTED', 'SEMI_TRUSTED', 'UNTRUSTED'] as const;
+export type TrustLevel = (typeof TRUST_LEVELS)[number];
+
+/** Security event severities (spec Part 8 §95). */
+export const SECURITY_EVENT_SEVERITIES = ['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
+export type SecurityEventSeverity = (typeof SECURITY_EVENT_SEVERITIES)[number];
+
+/** Incident lifecycle states (spec Part 8 §94, §96). */
+export const INCIDENT_STATUSES = ['OPEN', 'INVESTIGATING', 'MITIGATED', 'RESOLVED'] as const;
+export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
+
+/** API credential lifecycle (spec Part 8 §11). */
+export const API_CREDENTIAL_STATUSES = ['ACTIVE', 'EXPIRED', 'REVOKED'] as const;
+export type ApiCredentialStatus = (typeof API_CREDENTIAL_STATUSES)[number];
+
+/** Scoped credential grant lifecycle (spec Part 8 §14-§15). */
+export const CREDENTIAL_GRANT_STATUSES = ['ISSUED', 'EXPIRED', 'REVOKED', 'CONSUMED'] as const;
+export type CredentialGrantStatus = (typeof CREDENTIAL_GRANT_STATUSES)[number];
+
+/** Scope version lifecycle (spec Part 8 §91-§92). */
+export const SCOPE_VERSION_STATUSES = ['PROPOSED', 'ACTIVE', 'SUPERSEDED'] as const;
+export type ScopeVersionStatus = (typeof SCOPE_VERSION_STATUSES)[number];
+
+/** Circuit breaker states (spec Part 8 §98-§99). */
+export const CIRCUIT_BREAKER_STATES = ['CLOSED', 'OPEN', 'HALF_OPEN'] as const;
+export type CircuitBreakerState = (typeof CIRCUIT_BREAKER_STATES)[number];
+
+/** Circuit breaker violation categories (spec Part 8 §98). */
+export const CIRCUIT_BREAKER_CATEGORIES = [
+  'SCOPE_VIOLATION',
+  'INVALID_TOOL_REQUEST',
+  'CREDENTIAL_REQUEST',
+  'RESOURCE_ABUSE',
+  'DUPLICATE_EXECUTION',
+  'INVALID_MODEL_OUTPUT',
+  'MODEL_POLICY_BYPASS',
+] as const;
+export type CircuitBreakerCategory = (typeof CIRCUIT_BREAKER_CATEGORIES)[number];
+
+/** Outbox delivery states (spec Part 8 §44). */
+export const OUTBOX_DELIVERY_STATUSES = ['PENDING', 'DELIVERED', 'FAILED', 'ABANDONED'] as const;
+export type OutboxDeliveryStatus = (typeof OUTBOX_DELIVERY_STATUSES)[number];
+
+/** Retention data classes (spec Part 8 §59). */
+export const RETENTION_DATA_CLASSES = [
+  'RAW_HTTP',
+  'SCREENSHOTS',
+  'BROWSER_TRACES',
+  'HAR',
+  'SOURCE_ARTIFACTS',
+  'REPORTS',
+  'AGENT_TRACES',
+  'LOGS',
+  'EVALUATION_DATA',
+] as const;
+export type RetentionDataClass = (typeof RETENTION_DATA_CLASSES)[number];
+
+/** Engagement-level TLS verification policy (spec Part 8 §75). */
+export const TLS_POLICY_MODES = ['STRICT', 'AUTHORIZED_CUSTOM_CA'] as const;
+export type TlsPolicyMode = (typeof TLS_POLICY_MODES)[number];
+
+/** Platform emergency stop states (spec Part 8 §89). */
+export const EMERGENCY_STOP_STATUSES = ['CLEAR', 'ENGAGED', 'RELEASING'] as const;
+export type EmergencyStopStatus = (typeof EMERGENCY_STOP_STATUSES)[number];
 
 // ---------------------------------------------------------------------------
 // Part 4 — Security Reasoning Engine domain enums (spec Part 4 §3, §7-§13,

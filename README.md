@@ -366,3 +366,23 @@ conflated (§101).
   evaluations page (scenario registry, run execution, scorecard bars).
 * Tests: 675 passing (30 unit + 13 integration + 8 security for Part 7);
   smoke: 88 checks including the full Part 7 surface.
+
+## Part 8 — Production Hardening (complete)
+
+The final layer wraps the whole platform in deterministic operational security:
+
+- **Zero-trust internals (§5)** — HMAC-signed, subject+capability-scoped internal service tokens; fail-closed verification.
+- **API credentials (§11)** — API keys / PATs with owner, scopes, expiry, last-used, revocation; only SHA-256 hashes stored; the plaintext token is shown exactly once.
+- **Scoped credential grants (§14-§15, §93)** — workers resolve secrets only through grants bound to engagement+identity+target+purpose with TTL; every resolution raises a CREDENTIAL_ACCESS event; kill switches at grant / engagement / platform level.
+- **Tamper-evident audit chain (§85-§86)** — SHA-256 hash chain over canonical (jsonb key-order-safe) record content; advisory-locked appends; verification detects edits, reorderings and deletions.
+- **Security events + incidents (§94-§96)** — deterministic events at control points; severity floors (operators cannot downgrade a CRITICAL category); HIGH/CRITICAL bursts auto-open incidents; timelines are reconstructable.
+- **Circuit breakers (§97-§99)** — per (subject, category) violation counters; OPEN requires a human reset; agent and model breakers included.
+- **Emergency stop (§89-§90)** — deterministic, LLM-independent, persisted across restarts; cancels pending tasks, revokes all grants, blocks every target-bound route with 403 EMERGENCY_STOP_ENGAGED.
+- **Scope versioning (§91-§92)** — propose → diff → explicit activation → supersede; history immutable.
+- **Transactional outbox (§44-§45)** — per-aggregate sequences, at-least-once delivery, bounded batches, visible ABANDONED state.
+- **RLS defense in depth (§7)** — aegis_app role + tenant GUC policies on 10 tenant tables, tested with SET ROLE cross-tenant probes.
+- **Artifact safety (§19-§20, §29-§31)** — magic-byte content detection, active-content quarantine, compression-bomb guards, archive traversal normalization, research egress guard.
+- **Observability (§49-§52)** — /api/health (liveness), /api/ready (readiness + WAITING_FOR_RESOURCE), /api/metrics (security metrics snapshot).
+- **Ops tooling (§62-§70, §115)** — `npm run backup` / `npm run restore` (verified restore with row-hash equality), `npm run deps:audit` (fails closed), 9 operational runbooks, hardened Dockerfile + compose (non-root, dropped caps, no docker socket).
+
+**Tests:** 706 green (424 unit / 183 integration / 97 security / 2 e2e); 76 migrations; Part 8 adds 41 tests across the three suites including the verified-backup roundtrip and RLS cross-tenant probes. Honest boundary: the fastify 4→5 upgrade (HIGH advisory in the routing layer) is deliberately gated behind the Part 7 regression suite rather than shipped untested.

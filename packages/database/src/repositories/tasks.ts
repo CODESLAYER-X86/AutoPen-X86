@@ -104,6 +104,19 @@ export class TasksRepository implements RepoBase {
     return result.rows[0] ? mapTask(result.rows[0]) : null;
   }
 
+  /**
+   * Part 8 §89: emergency stop cancels every not-yet-started task in one
+   * deterministic statement. Running tasks are handled by lease recovery;
+   * only schedulable work is cancelled here.
+   */
+  async cancelPending(): Promise<number> {
+    const result = await this.pool.query(
+      `UPDATE tasks SET status = 'CANCELLED', completed_at = now(), updated_at = now()
+       WHERE status IN ('PENDING', 'QUEUED')`,
+    );
+    return result.rowCount ?? 0;
+  }
+
   async attachResult(id: string, result: Record<string, unknown>): Promise<TaskRecord | null> {
     const updated = await this.pool.query(
       `UPDATE tasks SET result = $2::jsonb, updated_at = now() WHERE id = $1

@@ -109,6 +109,11 @@ export async function httpRoutes(app: FastifyInstance): Promise<void> {
     if (!request.user) throw new Error('auth invariant violated');
     const { id } = request.params as { id: string };
     const engagement = await requireOwnedEngagement(c, request.user.id, id);
+    // Part 8 §89-90: emergency stop blocks all target-bound actions
+    // deterministically (never via the model).
+    if (c.hardening) {
+      await c.hardening.emergencyStop.assertNotEngaged();
+    }
     const body = parseBody(HttpRequestInputSchema, request.body ?? {});
     const scope = await scopeRulesForEngagement(c, engagement.id);
     if (!scope) {
@@ -140,6 +145,11 @@ export async function httpRoutes(app: FastifyInstance): Promise<void> {
     if (!request.user) throw new Error('auth invariant violated');
     const { id } = request.params as { id: string };
     const engagement = await requireOwnedEngagement(c, request.user.id, id);
+    // Part 8 §89-90: emergency stop blocks all target-bound actions
+    // deterministically (never via the model).
+    if (c.hardening) {
+      await c.hardening.emergencyStop.assertNotEngaged();
+    }
     const body = parseBody(HttpReplayInputSchema, request.body ?? {});
     const scope = await scopeRulesForEngagement(c, engagement.id);
     if (!scope) {
@@ -171,6 +181,11 @@ export async function httpRoutes(app: FastifyInstance): Promise<void> {
     if (!request.user) throw new Error('auth invariant violated');
     const { id } = request.params as { id: string };
     const engagement = await requireOwnedEngagement(c, request.user.id, id);
+    // Part 8 §89-90: emergency stop blocks all target-bound actions
+    // deterministically (never via the model).
+    if (c.hardening) {
+      await c.hardening.emergencyStop.assertNotEngaged();
+    }
     const body = parseBody(HttpMutateInputSchema, request.body ?? {});
     const scope = await scopeRulesForEngagement(c, engagement.id);
     if (!scope) {

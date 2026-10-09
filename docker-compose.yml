@@ -1,0 +1,44 @@
+# Part 8 §116-§117: control plane / data plane / worker plane separation.
+# The API container runs as non-root with dropped capabilities and NO host
+# docker socket. PostgreSQL is an external data-plane service; workers are
+# separate deployables with their own (stricter) network policy.
+services:
+  api:
+    build: .
+    image: aegis/api:0.8.0
+    # §71: drop all Linux capabilities, deny new privileges, read-only rootfs.
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: false # dist/ and node_modules are writable only by build; data/ is the mutable volume
+    tmpfs:
+      - /tmp
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://aegis_app:${AEGIS_DB_PASSWORD}@postgres:5432/aegis
+      APP_PORT: "4000"
+      FEATURE_HARDENING: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    volumes:
+      - api-data:/app/data
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: aegis_app
+      POSTGRES_PASSWORD: ${AEGIS_DB_PASSWORD}
+      POSTGRES_DB: aegis
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis_app -d aegis"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+volumes:
+  api-data:
+  pg-data:

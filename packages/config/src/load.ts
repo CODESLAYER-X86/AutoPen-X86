@@ -77,6 +77,13 @@ function toAppConfig(raw: EnvRaw, googleApiKeyConfigured: boolean): AppConfig {
       securityReasoning: raw.FEATURE_SECURITY_REASONING,
       autonomousEngine: raw.FEATURE_AUTONOMOUS_ENGINE,
       evaluation: raw.FEATURE_EVALUATION,
+      hardening: raw.FEATURE_HARDENING,
+    },
+    hardening: {
+      internalServiceTokenSecret: raw.INTERNAL_SERVICE_TOKEN_SECRET,
+      apiKeyTtlHours: raw.HARDENING_API_KEY_TTL_HOURS,
+      grantTtlMinutes: raw.HARDENING_GRANT_TTL_MINUTES,
+      breakerDefaultThreshold: raw.HARDENING_BREAKER_DEFAULT_THRESHOLD,
     },
     reasoning: {
       maxGraphNodes: raw.REASONING_MAX_GRAPH_NODES,

@@ -30,6 +30,7 @@ import { SecurityReasoningEngine } from '@aegis/reasoning';
 import { KnowledgeEngine } from '@aegis/knowledge';
 import { AutonomousEngine } from '@aegis/autonomous';
 import { VerificationReportingEngine } from '@aegis/vr';
+import { HardeningEngine } from '@aegis/hardening';
 import { ConfigurationError, type ModelRole } from '@aegis/shared';
 import { AgentEngineRegistry } from './agent-engine.js';
 import { createControlledHttpPort, createReasoningPort, createReportArtifactStore } from './lib/vr-ports.js';
@@ -64,6 +65,9 @@ export interface AppContext {
   /** Part 7 — verification, reporting & evaluation engine (null when
    *  disabled). Verification is a separate system from discovery (§2). */
   vr: VerificationReportingEngine | null;
+  /** Part 8 — production hardening engine (null when disabled by config).
+   *  Security controls fail closed (spec §67). */
+  hardening: HardeningEngine | null;
   /** Route-level audit trail (spec §30). */
   audit: (entry: {
     actorUserId: string | null;
@@ -358,6 +362,26 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
         })
       : null;
 
+  // --- Part 8: production hardening engine (§3, §67, §111) ------------
+  // Composed unconditionally when enabled: it wraps the audit chain, the
+  // emergency stop, credential governance, circuit breakers and the outbox.
+  const hardeningEngine: HardeningEngine | null = config.features.hardening
+    ? new HardeningEngine({
+        repos,
+        pool,
+        secretStore: {
+          getSecret: async (reference) => {
+            const value = await secretStore.resolve(reference);
+            return { reference, value };
+          },
+          rotate: async () => {
+            /* rotation is driven by scripts/ops + runbooks (§12). */
+          },
+        },
+        eventBus,
+      })
+    : null;
+
   return {
     config,
     logger,
@@ -381,6 +405,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     knowledge: knowledgeEngine,
     autonomous: autonomousEngine,
     vr: vrEngine,
+    hardening: hardeningEngine,
     audit: async (entry) => {
       await repos.audit.create(entry);
     },

@@ -1,0 +1,15 @@
+node_modules
+data
+dist
+coverage
+*.log
+.git
+.env
+.env.local
+download
+tool-results
+upload
+skills
+docs
+tests
+scripts

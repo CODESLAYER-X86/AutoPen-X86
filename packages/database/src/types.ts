@@ -1358,3 +1358,135 @@ export interface BenchmarkRunRecord {
   started_at: Iso8601;
   completed_at: Iso8601 | null;
 }
+
+// ---------------------------------------------------------------------------
+// Part 8 — Production Hardening records (spec Part 8 §11, §15, §44, §59, §75,
+// §85, §89, §91-§99).
+// ---------------------------------------------------------------------------
+
+export interface AuditChainRecord extends AuditRecord {
+  chain_seq: number;
+  prev_hash: string | null;
+  content_hash: string | null;
+}
+
+export interface ApiCredentialRecord {
+  id: string;
+  user_id: string;
+  kind: 'API_KEY' | 'PERSONAL_ACCESS_TOKEN';
+  name: string;
+  token_hash: string;
+  scopes: string[];
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  created_at: Iso8601;
+  expires_at: Iso8601;
+  last_used_at: Iso8601 | null;
+  revoked_at: Iso8601 | null;
+}
+
+export interface CredentialGrantRecord {
+  id: string;
+  engagement_id: string;
+  identity_id: string;
+  target_id: string;
+  secret_reference: string;
+  purpose: 'AUTHENTICATION' | 'VERIFICATION' | 'REPRODUCTION';
+  status: 'ISSUED' | 'EXPIRED' | 'REVOKED' | 'CONSUMED';
+  created_at: Iso8601;
+  expires_at: Iso8601;
+  revoked_at: Iso8601 | null;
+  consumed_at: Iso8601 | null;
+}
+
+export interface ScopeVersionRecord {
+  id: string;
+  engagement_id: string;
+  version: number;
+  status: 'PROPOSED' | 'ACTIVE' | 'SUPERSEDED';
+  scope: JsonRecord;
+  diff: JsonRecord;
+  created_by: string;
+  created_at: Iso8601;
+  activated_at: Iso8601 | null;
+}
+
+export interface SecurityEventRecord {
+  id: string;
+  incident_id: string | null;
+  severity: 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  category: string;
+  actor: 'AGENT' | 'MODEL' | 'WORKER' | 'USER' | 'PLATFORM';
+  engagement_id: string | null;
+  description: string;
+  metadata: JsonRecord;
+  created_at: Iso8601;
+}
+
+export interface IncidentRecord {
+  id: string;
+  status: 'OPEN' | 'INVESTIGATING' | 'MITIGATED' | 'RESOLVED';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  title: string;
+  opened_at: Iso8601;
+  resolved_at: Iso8601 | null;
+  event_count: number;
+}
+
+export interface CircuitBreakerRecord {
+  id: string;
+  subject: 'AGENT' | 'MODEL';
+  subject_id: string;
+  engagement_id: string | null;
+  category: string;
+  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  violation_count: number;
+  threshold: number;
+  tripped_at: Iso8601 | null;
+  reset_at: Iso8601 | null;
+  updated_at: Iso8601;
+}
+
+export interface OutboxEventRecord {
+  id: string;
+  event_type: string;
+  engagement_id: string | null;
+  aggregate_id: string;
+  causation_id: string | null;
+  correlation_id: string | null;
+  sequence: number;
+  payload: JsonRecord;
+  status: 'PENDING' | 'DELIVERED' | 'FAILED' | 'ABANDONED';
+  attempts: number;
+  created_at: Iso8601;
+  delivered_at: Iso8601 | null;
+}
+
+export interface RetentionPolicyRecord {
+  id: string;
+  data_class: string;
+  retention_days: number;
+  hard_delete: boolean;
+  created_at: Iso8601;
+  updated_at: Iso8601;
+}
+
+export interface BackupRecordRecord {
+  id: string;
+  label: string;
+  file_path: string;
+  sha256: string;
+  size_bytes: number;
+  migrations_applied: number;
+  restore_verified_at: Iso8601 | null;
+  created_at: Iso8601;
+}
+
+export interface EmergencyStopRecord {
+  status: 'CLEAR' | 'ENGAGED' | 'RELEASING';
+  engaged_at: Iso8601 | null;
+  released_at: Iso8601 | null;
+  engaged_by: string | null;
+  reason: string | null;
+  cancelled_tasks: number;
+  revoked_grants: number;
+}

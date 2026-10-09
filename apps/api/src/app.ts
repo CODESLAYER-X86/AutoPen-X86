@@ -37,6 +37,8 @@ import { knowledgeRoutes } from './routes/knowledge.js';
 import { autonomousRoutes } from './routes/autonomous.js';
 import { reportingRoutes } from './routes/reporting.js';
 import { evaluationRoutes } from './routes/evaluation.js';
+import { opsRoutes } from './routes/ops.js';
+import { securityRoutes } from './routes/security.js';
 
 export interface BuildAppOptions {
   config?: AppConfig;
@@ -83,9 +85,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
-  // --- Public scope: meta + register/login ---
+  // --- Public scope: meta + register/login + health (§51 liveness) ---
   await app.register(metaRoutes);
   await app.register(publicAuthRoutes);
+  await app.register(opsRoutes);
 
   // --- Authenticated scope: everything else ---
   await app.register(async (authenticated) => {
@@ -107,6 +110,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     await authenticated.register(autonomousRoutes);
     await authenticated.register(reportingRoutes);
     await authenticated.register(evaluationRoutes);
+    await authenticated.register(securityRoutes);
   });
 
   // Part 3 §75: browser cleanup even on graceful shutdown paths.
